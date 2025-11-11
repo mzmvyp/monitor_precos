@@ -1,0 +1,126 @@
+items:
+  - id: "cpu-ryzen-5-9600x"
+    name: "Processador AMD Ryzen 5 9600X"
+    category: "cpu"
+    desired_price: 1500.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/609956/processador-amd-ryzen-5-9600x-3-9-ghz-5-4-ghz-cache-32-mb-6-nucleos-12-threads-am5-100-100001405wof"
+      - store: "amazon"
+        url: "https://www.amazon.com.br/PROCESSADOR-AM5-RYZEN-5-9600X/dp/B0D6NN6TM7"
+    alternatives:
+      - id: "cpu-ryzen-7-7700"
+      - id: "cpu-ryzen-7-7700x"
+      - id: "cpu-ryzen-5-7600x"
+
+  - id: "cpu-ryzen-7-7700"
+    name: "Processador AMD Ryzen 7 7700"
+    category: "cpu"
+    desired_price: 1500.0
+    urls:
+      - store: "pichau"
+        url: "https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box"
+      # Link da Terabyte removido - retorna status 201 (problema no site)
+
+  - id: "cpu-ryzen-7-7700x"
+    name: "Processador AMD Ryzen 7 7700X"
+    category: "cpu"
+    desired_price: 1500.0
+    urls:
+      - store: "terabyte"
+        url: "https://www.terabyteshop.com.br/produto/22264/processador-amd-ryzen-7-7700x-45ghz-54ghz-turbo-8-cores-16-threads-am5-100-100000591wof"
+      - store: "pichau"
+        url: "https://www.pichau.com.br/processador-amd-ryzen-7-7700x-8-core-16-threads-4-5ghz-5-4ghz-turbo-cache-40mb-am5-100-100000591wof"
+
+  - id: "cpu-ryzen-5-7600x"
+    name: "Processador AMD Ryzen 5 7600X"
+    category: "cpu"
+    desired_price: 1500.0
+    urls:
+      - store: "pichau"
+        url: "https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof"
+
+  - id: "motherboard-asus-tuf-b650m-e"
+    name: "Placa-Mãe ASUS TUF Gaming B650M-E WiFi"
+    category: "motherboard"
+    desired_price: 1400.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/523145/placa-mae-asus-tuf-gaming-b650m-e-wifi-amd-am5-b650-ddr5-preto-90mb1fv0-m0eay0"
+      - store: "amazon"
+        url: "https://www.amazon.com.br/gp/product/B0C6HXLPJP"
+      # Link da Terabyte removido - produto diferente (B650E-E ATX em vez de B650M-E mATX)
+
+  - id: "ssd-kingston-kc3000"
+    name: "SSD Kingston KC3000 1TB"
+    category: "storage"
+    desired_price: 700.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/272331/ssd-kingston-kc3000-1tb-m-2-2280-pcie-4-0-x4-nvme-leitura-7000-mb-s-gravacao-6000-mb-s-preto-skc3000s-1024g"
+      - store: "amazon"
+        url: "https://www.amazon.com.br/Kingston-SKC3000S-1024G-performance-Grava%C3%A7%C3%A3o/dp/B09K7F5VJQ"
+
+  - id: "memory-xpg-lancer-rgb-32gb"
+    name: "Memória XPG Lancer RGB 32GB (2x16GB) DDR5 6000 CL30"
+    category: "memory"
+    desired_price: 1100.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/526516/memoria-ram-xpg-lancer-rgb-32gb-2x16gb-6000mhz-ddr5-cl30-preto-ax5u6000c3016g-dclarbk"
+
+  - id: "memory-kingston-fury-32gb"
+    name: "Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz"
+    category: "memory"
+    desired_price: 1100.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/616568/memoria-ram-kingston-fury-beast-expo-32gb-2x16gb-6000mt-s-ddr5-dimm-cl30-preto-kf560c30bbek2-32"
+      - store: "terabyte"
+        url: "https://www.terabyteshop.com.br/produto/24318/memoria-ddr5-kingston-fury-beast-expo-32gb-6000mhz-black-kf560c36bbe-32"
+
+  - id: "cooler-rise-mode-aura-ice"
+    name: "Water Cooler Rise Mode Aura Ice Black 240mm"
+    category: "cooler"
+    desired_price: 300.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/495960/water-cooler-rise-mode-aura-ice-black-argb-240mm-amd-intel-preto-rm-waib-05-argb"
+
+  - id: "fans-rise-mode-aura-pro"
+    name: "Kit 3 Fans Rise Mode Aura Pro Black"
+    category: "cooler"
+    desired_price: 120.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/495962/kit-com-3-ventoinhas-rise-mode-aura-pro-black-argb-120mm-preto-rm-aub-02-argb"
+
+  - id: "case-kalkan-midgard"
+    name: "Gabinete Kalkan Midgard Mid Tower"
+    category: "case"
+    desired_price: 200.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/713685/gabinete-kalkan-midgard-mid-tower-lateral-em-vidro-micro-atx-preto-klk00039"
+
+  - id: "psu-husky-sledger-850w"
+    name: "Fonte Husky Sledger 850W 80 Plus Gold"
+    category: "psu"
+    desired_price: 550.0
+    urls:
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/603225/fonte-husky-sledger-850w-80-plus-gold-cybenetics-gold-pfc-ativo-full-modular-bivolt-hfn850pt"
+  
+  # Fontes alternativas 850W Gold na Terabyte
+  - id: "psu-gamemax-gx850-pro"
+    name: "Fonte Gamemax GX850 Pro 850W 80 Plus Gold"
+    category: "psu"
+    desired_price: 550.0
+    urls:
+      - store: "terabyte"
+        url: "https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br"
+
+  # Teclado removido - Mercado Livre requer login para scraping
+  # Adicione links de outras lojas se encontrar o produto
+
+
