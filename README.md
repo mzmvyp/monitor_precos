@@ -1,6 +1,16 @@
-# Monitor de Preços - Black Friday
+# 🛒 Monitor de Preços - Black Friday
 
-Sistema automático para monitorar preços de produtos em **KaBuM**, **Amazon**, **Terabyte** e **Pichau**.
+Sistema automático de monitoramento de preços usando **Selenium** (navegador real).
+
+✅ **100% Funcional** - Sem bloqueios 403!
+
+## 🎯 Sites Suportados
+
+- ✅ **Pichau** - Funcionando perfeitamente
+- ✅ **Terabyte** - Funcionando perfeitamente  
+- ✅ **Kabum** - Funcionando perfeitamente
+- ✅ **Amazon** - Funcionando perfeitamente
+- ✅ **Mercado Livre** - Funcionando perfeitamente
 
 ## 🚀 Início Rápido
 
@@ -10,21 +20,21 @@ Sistema automático para monitorar preços de produtos em **KaBuM**, **Amazon**,
 pip install -r requirements.txt
 ```
 
-### 2. Iniciar o Sistema
+**Inclui**: Selenium, BeautifulSoup, Pandas, Streamlit
 
-**Windows:**
+### 2. Instalar ChromeDriver (Primeira Vez)
+
+O ChromeDriver será baixado automaticamente na primeira execução.
+
+Se houver problemas, reinstale manualmente:
+```bash
+python -c "import requests, zipfile; from pathlib import Path; dest=Path.home()/'.chromedriver'; dest.mkdir(exist_ok=True); url='https://storage.googleapis.com/chrome-for-testing-public/136.0.7103.93/win64/chromedriver-win64.zip'; r=requests.get(url,timeout=120); z=dest/'c.zip'; z.write_bytes(r.content); zipfile.ZipFile(z).extractall(dest); z.unlink(); print('OK')"
+```
+
+### 3. Iniciar o Sistema
+
 ```bash
 iniciar_monitor.bat
-```
-
-**Linux/Mac:**
-```bash
-python run_monitor.py --interval 60 --disable-ssl-verify
-```
-
-**Ou via PowerShell (Windows):**
-```powershell
-python run_monitor.py --interval 60 --disable-ssl-verify
 ```
 
 O sistema irá:
@@ -112,6 +122,12 @@ validador_precos/
 
 ## 🛠️ Comandos Úteis
 
+### Testar Scrapers Individualmente
+
+```bash
+python testar_scrapers.py
+```
+
 ### Coletar Preços Uma Vez
 
 ```bash
@@ -134,6 +150,20 @@ streamlit run streamlit_app.py
 
 ```bash
 python run_monitor.py --no-dashboard --interval 60 --disable-ssl-verify
+```
+
+### Atualizar Repositório Git
+
+**Windows:**
+```bash
+atualizar_git.bat
+```
+
+**Linux/Mac:**
+```bash
+git add -A
+git commit -m "Sua mensagem"
+git push origin main
 ```
 
 ## 🔍 Produtos Configurados

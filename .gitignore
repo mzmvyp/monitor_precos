@@ -1,4 +1,59 @@
+# Python
 __pycache__/
 *.py[cod]
 *.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Arquivos de debug e testes temporários
+*_debug.html
+*_test.html
+debug_*.html
+debug_*.py
+debug_*.txt
+debug_flight_*.html
+*.backup
+*.backup[0-9]
+*.tmp
+testar_*.bat
+testar_*.py
+validar_*.bat
+_*.bat
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dados sensíveis (manter apenas o CSV principal)
+data/*.backup*
+data/*.tmp
+
+# ChromeDriver (instalado localmente)
+.chromedriver/
+
+# Selenium
+geckodriver.log
+chromedriver.log
 

@@ -1,0 +1,11 @@
+timestamp,product_id,product_name,store,current_price,previous_price,reduction_percent,alert_sent
+2025-11-12 02:33:18.927191+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,amazon,1456.95,1881.64,22.57020471503582,True
+2025-11-12 04:01:29.750009+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,terabyte,2539.0,4599.0,44.79234616220917,True
+2025-11-12 05:23:30.037559+00:00,cpu-ryzen-7-9700x,Processador AMD Ryzen 7 9700X,kabum,2089.0,4229.0,50.60297942776069,True
+2025-11-12 07:24:06.444532+00:00,motherboard-gigabyte-b650m-ds3h,Placa-Mãe Gigabyte B650M DS3H,terabyte,619.99,999.99,38.00038000380004,True
+2025-11-12 10:23:16.176825+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,terabyte,2474.89,3499.9,29.286836766764768,True
+2025-11-12 10:23:21.544833+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,amazon,1062.99,1456.95,27.04004941830537,True
+2025-11-12 10:23:26.459659+00:00,motherboard-msi-b650-tomahawk-wifi,Placa-Mãe MSI MAG B650 Tomahawk WiFi,terabyte,1037.23,1689.9,38.62181194153501,True
+2025-11-12 12:23:17.355286+00:00,motherboard-gigabyte-b650-aorus-elite,Placa-Mãe Gigabyte B650 Aorus Elite AX,kabum,1999.99,2637.77,24.178757056149703,True
+2025-11-12 14:23:32.958650+00:00,motherboard-gigabyte-b650m-ds3h,Placa-Mãe Gigabyte B650M DS3H,terabyte,689.9,999.99,31.00931009310093,True
+2025-11-12 18:24:05.479373+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,terabyte,3499.9,3999.9,12.500312507812694,True

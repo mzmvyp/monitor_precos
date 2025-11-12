@@ -6,4 +6,10 @@ pyyaml>=6.0.0
 python-dateutil>=2.8.2
 tenacity>=8.2.3
 
+# Selenium para scraping com navegador real
+selenium>=4.15.0
+webdriver-manager>=4.0.1
+
+# DeepSeek API para agent de voos (usa requests, já incluído)
+
 

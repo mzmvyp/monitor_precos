@@ -1,0 +1,58 @@
+# Configuração de Alertas de Preço
+
+# Email para receber alertas
+email:
+  enabled: true
+  recipient: "willian.prado@ymail.com"
+  
+  # Yahoo Mail SMTP (GRÁTIS - não precisa pagar nada!)
+  # Instruções de configuração no arquivo CONFIGURAR_EMAIL.md
+  smtp_server: "smtp.mail.yahoo.com"
+  smtp_port: 587
+  sender_email: "willian.prado@ymail.com"  # Seu email YMail
+  sender_password: "yuxonlgmtrmzhdda"  # Senha de app do Yahoo
+
+# Configuração de alertas
+alerts:
+  # Percentual de redução para disparar alerta
+  price_drop_threshold: 5.0  # 5% de redução
+  
+  # Preço absoluto abaixo do desejado
+  below_desired_price: true  # Alertar quando ficar abaixo do preço desejado
+  
+  # Intervalo mínimo entre alertas do mesmo produto (em horas)
+  cooldown_hours: 6  # Não enviar mais de 1 alerta a cada 6 horas do mesmo produto
+  
+  # Produtos prioritários (alerta mesmo com redução menor)
+  priority_products:
+    - "mem-ddr5-32gb-xpg"  # Memória XPG que você perdeu a promoção
+    - "cpu-ryzen-7-8700f"  # Ryzen 8700F que acabou de adicionar
+  
+  # Redução mínima para produtos prioritários
+  priority_threshold: 2.0  # 2% de redução já dispara alerta
+
+# Mensagens personalizadas
+messages:
+  subject_template: "🔥 ALERTA DE PREÇO: {product_name}"
+  
+  body_template: |
+    🎯 PROMOÇÃO DETECTADA!
+    
+    Produto: {product_name}
+    Loja: {store}
+    
+    💰 PREÇO ATUAL: R$ {current_price}
+    📉 PREÇO ANTERIOR: R$ {previous_price}
+    🔻 REDUÇÃO: {reduction_percent}%
+    
+    🎯 Preço Desejado: R$ {desired_price}
+    
+    🔗 COMPRAR AGORA:
+    {url}
+    
+    ⏰ Alerta enviado em: {timestamp}
+    
+    ---
+    Monitor de Preços Automático
+    Não perca mais promoções! 🚀
+

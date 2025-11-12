@@ -4,10 +4,30 @@ import re
 
 from bs4 import BeautifulSoup
 
-from .base import StoreScraper, ScraperContext, parse_brazilian_currency, LOGGER
+from .selenium_base import SeleniumScraper, ScraperContext, LOGGER
 
 
-class MercadoLivreScraper(StoreScraper):
+def parse_brazilian_currency(value: str) -> float | None:
+    """Parse preço brasileiro para float."""
+    if not value:
+        return None
+    
+    # Padrão: R$ 1.234,56 ou R$1234,56
+    match = re.search(r'R\$\s*([0-9\.\s]+,[0-9]{2})', value)
+    if not match:
+        return None
+    
+    number = match.group(1)
+    digits = number.replace(" ", "").replace(".", "").replace(",", ".")
+    
+    try:
+        return float(digits)
+    except ValueError:
+        LOGGER.debug("Falha ao converter preço: %s", number)
+        return None
+
+
+class MercadoLivreScraper(SeleniumScraper):
     store = "mercadolivre"
 
     def _parse(self, ctx: ScraperContext, html: str):
@@ -63,4 +83,3 @@ class MercadoLivreScraper(StoreScraper):
             in_stock = "esgotado" not in page_text and "indisponível" not in page_text
 
         return price_value, raw_price, {"in_stock": in_stock, "availability": availability_text}
-

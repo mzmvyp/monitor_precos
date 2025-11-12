@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Sequence
 
 from src.price_monitor import PriceMonitor
+from src.flight_monitor import FlightMonitor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,18 +65,40 @@ def parse_args() -> argparse.Namespace:
 
 def collector_loop(
     monitor: PriceMonitor,
+    flight_monitor: FlightMonitor,
     stop_event: threading.Event,
     interval_minutes: float,
     product_ids: Sequence[str] | None,
 ) -> None:
     interval_seconds = max(60, int(interval_minutes * 60))
     LOGGER.info("Coleta contínua iniciada. Intervalo: %s segundos", interval_seconds)
+    
+    # Contador para buscar voos menos frequentemente (a cada 6 horas)
+    flight_check_interval = 6  # horas
+    flight_check_counter = 0
+    checks_per_flight = int((flight_check_interval * 60) / interval_minutes)
 
     while not stop_event.is_set():
         start = time.perf_counter()
         try:
+            # Coletar produtos
             snapshots = monitor.collect(product_ids=product_ids)
-            LOGGER.info("Coletados %s registros.", len(snapshots))
+            LOGGER.info("Coletados %s registros de produtos.", len(snapshots))
+            
+            # Coletar voos a cada 6 horas (menos frequente)
+            flight_check_counter += 1
+            if flight_check_counter >= checks_per_flight:
+                try:
+                    LOGGER.info("Iniciando busca de voos (a cada %sh)...", flight_check_interval)
+                    flights = flight_monitor.collect()
+                    LOGGER.info("Coletados %s voos.", len(flights))
+                    flight_check_counter = 0
+                except Exception as e:
+                    LOGGER.error(f"Erro ao coletar voos: {e}")
+                    # Não resetar contador em caso de erro, tentar novamente no próximo ciclo
+            else:
+                LOGGER.debug(f"Próxima busca de voos em {checks_per_flight - flight_check_counter} ciclos")
+                
         except Exception:  # noqa: BLE001
             LOGGER.exception("Erro inesperado durante coleta")
 
@@ -124,11 +147,18 @@ def main() -> None:
         LOGGER.info("Verificação SSL desabilitada")
 
     monitor = PriceMonitor(config_path=args.config, history_path=args.history)
+    
+    # Criar monitor de voos
+    flight_monitor = FlightMonitor(
+        config_path=Path("config/flights.yaml"),
+        history_path=Path("data/flight_history.csv")
+    )
+    
     stop_event = threading.Event()
 
     collector_thread = threading.Thread(
         target=collector_loop,
-        args=(monitor, stop_event, args.interval, args.products),
+        args=(monitor, flight_monitor, stop_event, args.interval, args.products),
         daemon=True,
     )
 

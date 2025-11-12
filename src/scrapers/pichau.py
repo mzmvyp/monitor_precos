@@ -4,10 +4,30 @@ import re
 
 from bs4 import BeautifulSoup
 
-from .base import StoreScraper, ScraperContext, parse_brazilian_currency, LOGGER
+from .selenium_base import SeleniumScraper, ScraperContext, LOGGER
 
 
-class PichauScraper(StoreScraper):
+def parse_brazilian_currency(value: str) -> float | None:
+    """Parse preço brasileiro para float."""
+    if not value:
+        return None
+    
+    # Padrão: R$ 1.234,56 ou R$1234,56
+    match = re.search(r'R\$\s*([0-9\.\s]+,[0-9]{2})', value)
+    if not match:
+        return None
+    
+    number = match.group(1)
+    digits = number.replace(" ", "").replace(".", "").replace(",", ".")
+    
+    try:
+        return float(digits)
+    except ValueError:
+        LOGGER.debug("Falha ao converter preço: %s", number)
+        return None
+
+
+class PichauScraper(SeleniumScraper):
     store = "pichau"
 
     def _parse(self, ctx: ScraperContext, html: str):
@@ -55,25 +75,24 @@ class PichauScraper(StoreScraper):
                 except:
                     continue
         
-        # Fallback: buscar "por:" seguido de preço
+        # Fallback: buscar "por:" seguido de preço - APENAS no container do produto
         if not raw_price:
-            page_text = soup.get_text()
-            por_match = re.search(r'por:\s*R\$?\s*[^\d]*([\d.]+,\d{2})', page_text, re.IGNORECASE)
+            product_container = soup.select_one(".product-page, .product-info, [class*='product-detail']")
+            search_area = product_container if product_container else soup
+            
+            container_text = search_area.get_text()
+            por_match = re.search(r'por:\s*R\$?\s*[^\d]*([\d.]+,\d{2})', container_text, re.IGNORECASE)
             if por_match:
-                raw_price = f"R$ {por_match.group(1)}"
-        
-        # Último fallback: buscar qualquer preço > R$ 100
-        if not raw_price:
-            page_text = soup.get_text()
-            all_prices = re.findall(r'R\$?\s*[^\d]*([\d.]+,\d{2})', page_text)
-            for price_str in all_prices:
                 try:
-                    value = float(price_str.replace('.', '').replace(',', '.'))
-                    if value > 100:  # Preço mínimo razoável
-                        raw_price = f"R$ {price_str}"
-                        break
+                    value = float(por_match.group(1).replace('.', '').replace(',', '.'))
+                    if value > 200:  # Validar preço mínimo razoável
+                        raw_price = f"R$ {por_match.group(1)}"
+                        LOGGER.debug(f"Pichau: Preço encontrado via 'por:': {raw_price}")
                 except:
-                    continue
+                    pass
+        
+        # NÃO USAR FALLBACK GENÉRICO - Se não encontrou, retornar None
+        # Melhor retornar None do que pegar preço errado de banner/propaganda!
 
         price_value = parse_brazilian_currency(raw_price) if raw_price else None
 
@@ -94,4 +113,3 @@ class PichauScraper(StoreScraper):
                 in_stock = False
 
         return price_value, raw_price, {"in_stock": in_stock}
-

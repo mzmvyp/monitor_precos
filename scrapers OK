@@ -1,0 +1,95 @@
+warning: in the working copy of 'src/scrapers/base.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/data/price_history.csv b/data/price_history.csv[m
+[1mindex a577482..8d827dc 100644[m
+[1m--- a/data/price_history.csv[m
+[1m+++ b/data/price_history.csv[m
+[36m@@ -536,3 +536,39 @@[m [mtimestamp,product_id,product_name,category,store,url,price,currency,in_stock,raw[m
+ 2025-11-11T00:32:44.571713+00:00,case-kalkan-midgard,Gabinete Kalkan Midgard Mid Tower,case,kabum,https://www.kabum.com.br/produto/713685/gabinete-kalkan-midgard-mid-tower-lateral-em-vidro-micro-atx-preto-klk00039,179.99,BRL,True,"R$ 179,99",[m
+ 2025-11-11T00:32:44.822186+00:00,psu-husky-sledger-850w,Fonte Husky Sledger 850W 80 Plus Gold,psu,kabum,https://www.kabum.com.br/produto/603225/fonte-husky-sledger-850w-80-plus-gold-cybenetics-gold-pfc-ativo-full-modular-bivolt-hfn850pt,549.9,BRL,True,"R$ 549,90",[m
+ 2025-11-11T00:32:45.554276+00:00,psu-gamemax-gx850-pro,Fonte Gamemax GX850 Pro 850W 80 Plus Gold,psu,terabyte,https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br,748.74,BRL,True,"R$ 748,74",[m
+[32m+[m[32m2025-11-11T00:57:04.438352+00:00,cpu-ryzen-5-9600x,Processador AMD Ryzen 5 9600X,cpu,kabum,https://www.kabum.com.br/produto/609956/processador-amd-ryzen-5-9600x-3-9-ghz-5-4-ghz-cache-32-mb-6-nucleos-12-threads-am5-100-100001405wof,1559.99,BRL,True,"R$ 1559,99",[m
+[32m+[m[32m2025-11-11T00:57:15.142935+00:00,cpu-ryzen-5-9600x,Processador AMD Ryzen 5 9600X,cpu,amazon,https://www.amazon.com.br/PROCESSADOR-AM5-RYZEN-5-9600X/dp/B0D6NN6TM7,1645.01,BRL,False,"R$1.645,01",[m
+[32m+[m[32m2025-11-11T00:57:15.755112+00:00,cpu-ryzen-7-7700,Processador AMD Ryzen 7 7700,cpu,pichau,https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box,,BRL,,,403 Client Error: Forbidden for url: https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box[m
+[32m+[m[32m2025-11-11T00:57:16.065604+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,cpu,terabyte,https://www.terabyteshop.com.br/produto/22264/processador-amd-ryzen-7-7700x-45ghz-54ghz-turbo-8-cores-16-threads-am5-100-100000591wof,,BRL,,,403 Client Error: Forbidden for url: https://www.terabyteshop.com.br/produto/22264/processador-amd-ryzen-7-7700x-45ghz-54ghz-turbo-8-cores-16-threads-am5-100-100000591wof[m
+[32m+[m[32m2025-11-11T00:57:16.111820+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,cpu,pichau,https://www.pichau.com.br/processador-amd-ryzen-7-7700x-8-core-16-threads-4-5ghz-5-4ghz-turbo-cache-40mb-am5-100-100000591wof,,BRL,,,403 Client Error: Forbidden for url: https://www.pichau.com.br/processador-amd-ryzen-7-7700x-8-core-16-threads-4-5ghz-5-4ghz-turbo-cache-40mb-am5-100-100000591wof[m
+[32m+[m[32m2025-11-11T00:57:16.149724+00:00,cpu-ryzen-5-7600x,Processador AMD Ryzen 5 7600X,cpu,pichau,https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof,,BRL,,,403 Client Error: Forbidden for url: https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof[m
+[32m+[m[32m2025-11-11T00:57:16.465288+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,motherboard,kabum,https://www.kabum.com.br/produto/523145/placa-mae-asus-tuf-gaming-b650m-e-wifi-amd-am5-b650-ddr5-preto-90mb1fv0-m0eay0,1459.99,BRL,True,"R$ 1459,99",[m
+[32m+[m[32m2025-11-11T00:57:21.042881+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,motherboard,amazon,https://www.amazon.com.br/gp/product/B0C6HXLPJP,1449.9,BRL,False,"R$1.449,90",[m
+[32m+[m[32m2025-11-11T00:57:21.422020+00:00,ssd-kingston-kc3000,SSD Kingston KC3000 1TB,storage,kabum,https://www.kabum.com.br/produto/272331/ssd-kingston-kc3000-1tb-m-2-2280-pcie-4-0-x4-nvme-leitura-7000-mb-s-gravacao-6000-mb-s-preto-skc3000s-1024g,777.99,BRL,True,"R$ 777,99",[m
+[32m+[m[32m2025-11-11T00:57:28.240230+00:00,ssd-kingston-kc3000,SSD Kingston KC3000 1TB,storage,amazon,https://www.amazon.com.br/Kingston-SKC3000S-1024G-performance-Grava%C3%A7%C3%A3o/dp/B09K7F5VJQ,816.0,BRL,False,"R$816,00",[m
+[32m+[m[32m2025-11-11T00:57:28.500285+00:00,memory-xpg-lancer-rgb-32gb,Memória XPG Lancer RGB 32GB (2x16GB) DDR5 6000 CL30,memory,kabum,https://www.kabum.com.br/produto/526516/memoria-ram-xpg-lancer-rgb-32gb-2x16gb-6000mhz-ddr5-cl30-preto-ax5u6000c3016g-dclarbk,1139.99,BRL,True,"R$ 1139,99",[m
+[32m+[m[32m2025-11-11T00:57:28.897138+00:00,memory-kingston-fury-32gb,Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz,memory,kabum,https://www.kabum.com.br/produto/616568/memoria-ram-kingston-fury-beast-expo-32gb-2x16gb-6000mt-s-ddr5-dimm-cl30-preto-kf560c30bbek2-32,1185.99,BRL,True,"R$ 1185,99",[m
+[32m+[m[32m2025-11-11T00:57:29.106540+00:00,memory-kingston-fury-32gb,Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz,memory,terabyte,https://www.terabyteshop.com.br/produto/24318/memoria-ddr5-kingston-fury-beast-expo-32gb-6000mhz-black-kf560c36bbe-32,,BRL,,,403 Client Error: Forbidden for url: https://www.terabyteshop.com.br/produto/24318/memoria-ddr5-kingston-fury-beast-expo-32gb-6000mhz-black-kf560c36bbe-32[m
+[32m+[m[32m2025-11-11T00:57:29.373081+00:00,cooler-rise-mode-aura-ice,Water Cooler Rise Mode Aura Ice Black 240mm,cooler,kabum,https://www.kabum.com.br/produto/495960/water-cooler-rise-mode-aura-ice-black-argb-240mm-amd-intel-preto-rm-waib-05-argb,270.99,BRL,True,"R$ 270,99",[m
+[32m+[m[32m2025-11-11T00:57:29.667587+00:00,fans-rise-mode-aura-pro,Kit 3 Fans Rise Mode Aura Pro Black,cooler,kabum,https://www.kabum.com.br/produto/495962/kit-com-3-ventoinhas-rise-mode-aura-pro-black-argb-120mm-preto-rm-aub-02-argb,118.99,BRL,True,"R$ 118,99",[m
+[32m+[m[32m2025-11-11T00:57:30.016136+00:00,case-kalkan-midgard,Gabinete Kalkan Midgard Mid Tower,case,kabum,https://www.kabum.com.br/produto/713685/gabinete-kalkan-midgard-mid-tower-lateral-em-vidro-micro-atx-preto-klk00039,179.99,BRL,True,"R$ 179,99",[m
+[32m+[m[32m2025-11-11T00:57:30.294824+00:00,psu-husky-sledger-850w,Fonte Husky Sledger 850W 80 Plus Gold,psu,kabum,https://www.kabum.com.br/produto/603225/fonte-husky-sledger-850w-80-plus-gold-cybenetics-gold-pfc-ativo-full-modular-bivolt-hfn850pt,549.9,BRL,True,"R$ 549,90",[m
+[32m+[m[32m2025-11-11T00:57:30.644193+00:00,psu-gamemax-gx850-pro,Fonte Gamemax GX850 Pro 850W 80 Plus Gold,psu,terabyte,https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br,,BRL,,,403 Client Error: Forbidden for url: https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br[m
+[32m+[m[32m2025-11-11T00:58:03.770214+00:00,cpu-ryzen-5-9600x,Processador AMD Ryzen 5 9600X,cpu,kabum,https://www.kabum.com.br/produto/609956/processador-amd-ryzen-5-9600x-3-9-ghz-5-4-ghz-cache-32-mb-6-nucleos-12-threads-am5-100-100001405wof,1559.99,BRL,True,"R$ 1559,99",[m
+[32m+[m[32m2025-11-11T00:58:07.327078+00:00,cpu-ryzen-5-9600x,Processador AMD Ryzen 5 9600X,cpu,amazon,https://www.amazon.com.br/PROCESSADOR-AM5-RYZEN-5-9600X/dp/B0D6NN6TM7,1499.99,BRL,True,"R$1.499,99",[m
+[32m+[m[32m2025-11-11T00:58:07.535019+00:00,cpu-ryzen-7-7700,Processador AMD Ryzen 7 7700,cpu,pichau,https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box,,BRL,,,403 Client Error: Forbidden for url: https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box[m
+[32m+[m[32m2025-11-11T00:58:07.715801+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,cpu,terabyte,https://www.terabyteshop.com.br/produto/22264/processador-amd-ryzen-7-7700x-45ghz-54ghz-turbo-8-cores-16-threads-am5-100-100000591wof,,BRL,,,403 Client Error: Forbidden for url: https://www.terabyteshop.com.br/produto/22264/processador-amd-ryzen-7-7700x-45ghz-54ghz-turbo-8-cores-16-threads-am5-100-100000591wof[m
+[32m+[m[32m2025-11-11T00:58:07.749472+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,cpu,pichau,https://www.pichau.com.br/processador-amd-ryzen-7-7700x-8-core-16-threads-4-5ghz-5-4ghz-turbo-cache-40mb-am5-100-100000591wof,,BRL,,,403 Client Error: Forbidden for url: https://www.pichau.com.br/processador-amd-ryzen-7-7700x-8-core-16-threads-4-5ghz-5-4ghz-turbo-cache-40mb-am5-100-100000591wof[m
+[32m+[m[32m2025-11-11T00:58:07.791371+00:00,cpu-ryzen-5-7600x,Processador AMD Ryzen 5 7600X,cpu,pichau,https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof,,BRL,,,403 Client Error: Forbidden for url: https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof[m
+[32m+[m[32m2025-11-11T00:58:07.862637+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,motherboard,kabum,https://www.kabum.com.br/produto/523145/placa-mae-asus-tuf-gaming-b650m-e-wifi-amd-am5-b650-ddr5-preto-90mb1fv0-m0eay0,1459.99,BRL,True,"R$ 1459,99",[m
+[32m+[m[32m2025-11-11T00:58:10.790362+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,motherboard,amazon,https://www.amazon.com.br/gp/product/B0C6HXLPJP,1449.9,BRL,False,"R$1.449,90",[m
+[32m+[m[32m2025-11-11T00:58:10.847800+00:00,ssd-kingston-kc3000,SSD Kingston KC3000 1TB,storage,kabum,https://www.kabum.com.br/produto/272331/ssd-kingston-kc3000-1tb-m-2-2280-pcie-4-0-x4-nvme-leitura-7000-mb-s-gravacao-6000-mb-s-preto-skc3000s-1024g,777.99,BRL,True,"R$ 777,99",[m
+[32m+[m[32m2025-11-11T00:58:16.935558+00:00,ssd-kingston-kc3000,SSD Kingston KC3000 1TB,storage,amazon,https://www.amazon.com.br/Kingston-SKC3000S-1024G-performance-Grava%C3%A7%C3%A3o/dp/B09K7F5VJQ,816.0,BRL,False,"R$816,00",[m
+[32m+[m[32m2025-11-11T00:58:16.992809+00:00,memory-xpg-lancer-rgb-32gb,Memória XPG Lancer RGB 32GB (2x16GB) DDR5 6000 CL30,memory,kabum,https://www.kabum.com.br/produto/526516/memoria-ram-xpg-lancer-rgb-32gb-2x16gb-6000mhz-ddr5-cl30-preto-ax5u6000c3016g-dclarbk,1139.99,BRL,True,"R$ 1139,99",[m
+[32m+[m[32m2025-11-11T00:58:17.071406+00:00,memory-kingston-fury-32gb,Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz,memory,kabum,https://www.kabum.com.br/produto/616568/memoria-ram-kingston-fury-beast-expo-32gb-2x16gb-6000mt-s-ddr5-dimm-cl30-preto-kf560c30bbek2-32,1185.99,BRL,True,"R$ 1185,99",[m
+[32m+[m[32m2025-11-11T00:58:17.266848+00:00,memory-kingston-fury-32gb,Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz,memory,terabyte,https://www.terabyteshop.com.br/produto/24318/memoria-ddr5-kingston-fury-beast-expo-32gb-6000mhz-black-kf560c36bbe-32,,BRL,,,403 Client Error: Forbidden for url: https://www.terabyteshop.com.br/produto/24318/memoria-ddr5-kingston-fury-beast-expo-32gb-6000mhz-black-kf560c36bbe-32[m
+[32m+[m[32m2025-11-11T00:58:17.547136+00:00,cooler-rise-mode-aura-ice,Water Cooler Rise Mode Aura Ice Black 240mm,cooler,kabum,https://www.kabum.com.br/produto/495960/water-cooler-rise-mode-aura-ice-black-argb-240mm-amd-intel-preto-rm-waib-05-argb,270.99,BRL,True,"R$ 270,99",[m
+[32m+[m[32m2025-11-11T00:58:17.608678+00:00,fans-rise-mode-aura-pro,Kit 3 Fans Rise Mode Aura Pro Black,cooler,kabum,https://www.kabum.com.br/produto/495962/kit-com-3-ventoinhas-rise-mode-aura-pro-black-argb-120mm-preto-rm-aub-02-argb,118.99,BRL,True,"R$ 118,99",[m
+[32m+[m[32m2025-11-11T00:58:17.875479+00:00,case-kalkan-midgard,Gabinete Kalkan Midgard Mid Tower,case,kabum,https://www.kabum.com.br/produto/713685/gabinete-kalkan-midgard-mid-tower-lateral-em-vidro-micro-atx-preto-klk00039,179.99,BRL,True,"R$ 179,99",[m
+[32m+[m[32m2025-11-11T00:58:18.176034+00:00,psu-husky-sledger-850w,Fonte Husky Sledger 850W 80 Plus Gold,psu,kabum,https://www.kabum.com.br/produto/603225/fonte-husky-sledger-850w-80-plus-gold-cybenetics-gold-pfc-ativo-full-modular-bivolt-hfn850pt,549.9,BRL,True,"R$ 549,90",[m
+[32m+[m[32m2025-11-11T00:58:18.389318+00:00,psu-gamemax-gx850-pro,Fonte Gamemax GX850 Pro 850W 80 Plus Gold,psu,terabyte,https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br,,BRL,,,403 Client Error: Forbidden for url: https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br[m
+[1mdiff --git a/src/scrapers/base.py b/src/scrapers/base.py[m
+[1mindex 75c2ecd..e6c964b 100644[m
+[1m--- a/src/scrapers/base.py[m
+[1m+++ b/src/scrapers/base.py[m
+[36m@@ -7,6 +7,7 @@[m [mimport re[m
+ from dataclasses import dataclass[m
+ from datetime import datetime, timezone[m
+ from typing import Optional[m
+[32m+[m[32mfrom urllib.parse import urlparse[m
+ [m
+ from tenacity import retry, stop_after_attempt, wait_exponential[m
+ [m
+[36m@@ -133,10 +134,36 @@[m [mclass StoreScraper(abc.ABC):[m
+             )[m
+ [m
+     def _get_html(self, ctx: ScraperContext) -> str:[m
+[31m-        response = self.session.get(ctx.url, timeout=20)[m
+[32m+[m[32m        response = self.session.get([m
+[32m+[m[32m            ctx.url,[m
+[32m+[m[32m            timeout=20,[m
+[32m+[m[32m            headers=self._build_request_headers(ctx),[m
+[32m+[m[32m        )[m
+         response.raise_for_status()[m
+         return response.text[m
+ [m
+[32m+[m[32m    def _build_request_headers(self, ctx: ScraperContext) -> dict[str, str]:[m
+[32m+[m[32m        parsed = urlparse(ctx.url)[m
+[32m+[m[32m        referer = f"{parsed.scheme}://{parsed.netloc}/"[m
+[32m+[m[32m        return {[m
+[32m+[m[32m            "accept": ([m
+[32m+[m[32m                "text/html,application/xhtml+xml,application/xml;q=0.9,"[m
+[32m+[m[32m                "image/avif,image/webp,image/apng,*/*;q=0.8"[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",[m
+[32m+[m[32m            "cache-control": "no-cache",[m
+[32m+[m[32m            "pragma": "no-cache",[m
+[32m+[m[32m            "referer": referer,[m
+[32m+[m[32m            "sec-ch-ua": '"Chromium";v="119", "Not?A_Brand";v="24", "Google Chrome";v="119"',[m
+[32m+[m[32m            "sec-ch-ua-mobile": "?0",[m
+[32m+[m[32m            "sec-ch-ua-platform": '"Windows"',[m
+[32m+[m[32m            "sec-fetch-dest": "document",[m
+[32m+[m[32m            "sec-fetch-mode": "navigate",[m
+[32m+[m[32m            "sec-fetch-site": "same-origin",[m
+[32m+[m[32m            "sec-fetch-user": "?1",[m
+[32m+[m[32m            "upgrade-insecure-requests": "1",[m
+[32m+[m[32m        }[m
+[32m+[m
+     @abc.abstractmethod[m
+     def _parse([m
+         self, ctx: ScraperContext, html: str[m

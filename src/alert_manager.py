@@ -1,0 +1,253 @@
+"""Gerenciador de alertas de preço por email."""
+from __future__ import annotations
+
+import logging
+import smtplib
+from datetime import datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from pathlib import Path
+from typing import Optional
+
+import pandas as pd
+import yaml
+
+LOGGER = logging.getLogger(__name__)
+
+
+class AlertManager:
+    """Gerencia alertas de preço por email."""
+    
+    def __init__(
+        self,
+        config_path: Path = Path("config/alerts.yaml"),
+        alert_history_path: Path = Path("data/alert_history.csv"),
+    ):
+        self.config_path = config_path
+        self.alert_history_path = alert_history_path
+        self.config = self._load_config()
+        self._ensure_history_file()
+    
+    def _load_config(self) -> dict:
+        """Carrega configuração de alertas."""
+        if not self.config_path.exists():
+            LOGGER.warning(f"Arquivo de configuração não encontrado: {self.config_path}")
+            return {"email": {"enabled": False}}
+        
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    
+    def _ensure_history_file(self) -> None:
+        """Garante que o arquivo de histórico existe."""
+        if not self.alert_history_path.parent.exists():
+            self.alert_history_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        if not self.alert_history_path.exists():
+            df = pd.DataFrame(columns=[
+                "timestamp",
+                "product_id",
+                "product_name",
+                "store",
+                "current_price",
+                "previous_price",
+                "reduction_percent",
+                "alert_sent",
+            ])
+            df.to_csv(self.alert_history_path, index=False, encoding="utf-8")
+    
+    def _can_send_alert(self, product_id: str, store: str) -> bool:
+        """Verifica se pode enviar alerta (cooldown)."""
+        if not self.alert_history_path.exists():
+            return True
+        
+        df = pd.read_csv(self.alert_history_path, encoding="utf-8")
+        if df.empty:
+            return True
+        
+        # Filtrar alertas deste produto/loja
+        product_alerts = df[
+            (df["product_id"] == product_id) &
+            (df["store"] == store) &
+            (df["alert_sent"] == True)
+        ]
+        
+        if product_alerts.empty:
+            return True
+        
+        # Verificar último alerta
+        last_alert = pd.to_datetime(product_alerts["timestamp"].iloc[-1], utc=True)
+        cooldown_hours = self.config.get("alerts", {}).get("cooldown_hours", 6)
+        cooldown = timedelta(hours=cooldown_hours)
+        
+        return datetime.now(timezone.utc) - last_alert > cooldown
+    
+    def _send_email(
+        self,
+        subject: str,
+        body: str,
+        recipient: Optional[str] = None
+    ) -> bool:
+        """Envia email de alerta."""
+        email_config = self.config.get("email", {})
+        
+        if not email_config.get("enabled", False):
+            LOGGER.info("Alertas por email desabilitados")
+            return False
+        
+        sender = email_config.get("sender_email")
+        password = email_config.get("sender_password")
+        recipient = recipient or email_config.get("recipient")
+        
+        if not all([sender, password, recipient]):
+            LOGGER.warning("Configuração de email incompleta. Configure em config/alerts.yaml")
+            return False
+        
+        try:
+            # Criar mensagem
+            msg = MIMEMultipart()
+            msg["From"] = sender
+            msg["To"] = recipient
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+            
+            # Enviar via SMTP
+            smtp_server = email_config.get("smtp_server", "smtp.gmail.com")
+            smtp_port = email_config.get("smtp_port", 587)
+            
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(sender, password)
+                server.send_message(msg)
+            
+            LOGGER.info(f"✅ Email enviado para {recipient}")
+            return True
+            
+        except Exception as e:
+            LOGGER.error(f"❌ Erro ao enviar email: {e}")
+            return False
+    
+    def check_and_alert(
+        self,
+        product_id: str,
+        product_name: str,
+        store: str,
+        url: str,
+        current_price: float,
+        previous_price: Optional[float],
+        desired_price: Optional[float] = None,
+    ) -> bool:
+        """
+        Verifica se deve enviar alerta e envia se necessário.
+        
+        Returns:
+            True se alerta foi enviado, False caso contrário
+        """
+        if not previous_price or current_price >= previous_price:
+            return False
+        
+        # Calcular redução
+        reduction_percent = ((previous_price - current_price) / previous_price) * 100
+        
+        # Verificar thresholds
+        alerts_config = self.config.get("alerts", {})
+        priority_products = alerts_config.get("priority_products", [])
+        
+        is_priority = product_id in priority_products
+        threshold = (
+            alerts_config.get("priority_threshold", 2.0)
+            if is_priority
+            else alerts_config.get("price_drop_threshold", 5.0)
+        )
+        
+        # Verificar se deve alertar
+        should_alert = False
+        
+        # 1. Redução percentual
+        if reduction_percent >= threshold:
+            should_alert = True
+        
+        # 2. Abaixo do preço desejado
+        if (
+            alerts_config.get("below_desired_price", True) and
+            desired_price and
+            current_price <= desired_price
+        ):
+            should_alert = True
+        
+        if not should_alert:
+            return False
+        
+        # Verificar cooldown
+        if not self._can_send_alert(product_id, store):
+            LOGGER.info(f"⏳ Cooldown ativo para {product_name} ({store})")
+            return False
+        
+        # Preparar mensagem
+        messages_config = self.config.get("messages", {})
+        subject_template = messages_config.get(
+            "subject_template",
+            "🔥 ALERTA DE PREÇO: {product_name}"
+        )
+        body_template = messages_config.get(
+            "body_template",
+            "Produto: {product_name}\nPreço: R$ {current_price}\nRedução: {reduction_percent}%"
+        )
+        
+        subject = subject_template.format(product_name=product_name)
+        body = body_template.format(
+            product_name=product_name,
+            store=store.upper(),
+            current_price=f"{current_price:.2f}",
+            previous_price=f"{previous_price:.2f}",
+            reduction_percent=f"{reduction_percent:.1f}",
+            desired_price=f"{desired_price:.2f}" if desired_price else "N/A",
+            url=url,
+            timestamp=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        )
+        
+        # Enviar email
+        alert_sent = self._send_email(subject, body)
+        
+        # Registrar no histórico
+        self._log_alert(
+            product_id=product_id,
+            product_name=product_name,
+            store=store,
+            current_price=current_price,
+            previous_price=previous_price,
+            reduction_percent=reduction_percent,
+            alert_sent=alert_sent,
+        )
+        
+        return alert_sent
+    
+    def _log_alert(
+        self,
+        product_id: str,
+        product_name: str,
+        store: str,
+        current_price: float,
+        previous_price: float,
+        reduction_percent: float,
+        alert_sent: bool,
+    ) -> None:
+        """Registra alerta no histórico."""
+        new_row = pd.DataFrame([{
+            "timestamp": datetime.now(timezone.utc),
+            "product_id": product_id,
+            "product_name": product_name,
+            "store": store,
+            "current_price": current_price,
+            "previous_price": previous_price,
+            "reduction_percent": reduction_percent,
+            "alert_sent": alert_sent,
+        }])
+        
+        if self.alert_history_path.exists():
+            df = pd.read_csv(self.alert_history_path, encoding="utf-8")
+            df = pd.concat([df, new_row], ignore_index=True)
+        else:
+            df = new_row
+        
+        df.to_csv(self.alert_history_path, index=False, encoding="utf-8")
+

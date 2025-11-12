@@ -8,9 +8,10 @@ from typing import Iterable, Sequence
 
 import pandas as pd
 
+from .alert_manager import AlertManager
 from .config_loader import load_products_config
 from .models import PriceSnapshot, ProductConfig, attach_target_price
-from .scrapers import AmazonScraper, KabumScraper, MercadoLivreScraper
+from .scrapers import AmazonScraper, KabumScraper, MercadoLivreScraper, RoyalCaribbeanScraper
 from .scrapers.terabyte import TerabyteScraper
 from .scrapers.pichau import PichauScraper
 from .scrapers.base import StoreScraper
@@ -31,6 +32,7 @@ def get_scrapers() -> dict[str, StoreScraper]:
             "mercadolivre": MercadoLivreScraper(),
             "terabyte": TerabyteScraper(),
             "pichau": PichauScraper(),
+            "royalcaribbean": RoyalCaribbeanScraper(),
         }
     return _SCRAPERS_CACHE
 
@@ -40,10 +42,12 @@ class PriceMonitor:
         self,
         config_path: Path = Path("config/products.yaml"),
         history_path: Path = Path("data/price_history.csv"),
+        enable_alerts: bool = True,
     ) -> None:
         self.config_path = config_path
         self.history_path = history_path
         self.products = load_products_config(config_path)
+        self.alert_manager = AlertManager() if enable_alerts else None
 
     def available_categories(self) -> set[str]:
         return {product.category for product in self.products.values()}
@@ -106,6 +110,11 @@ class PriceMonitor:
 
         enriched = attach_target_price(snapshots, self.products)
         self._append_history(enriched)
+        
+        # Verificar alertas
+        if self.alert_manager:
+            self._check_alerts(enriched)
+        
         return enriched
 
     def _append_history(self, snapshots: Iterable[PriceSnapshot]) -> None:
@@ -163,4 +172,43 @@ class PriceMonitor:
             latest_map[snap.product_id].append(snap)
 
         return latest_map
+    
+    def _check_alerts(self, snapshots: Iterable[PriceSnapshot]) -> None:
+        """Verifica e envia alertas para os snapshots."""
+        if not self.alert_manager:
+            return
+        
+        # Carregar histórico para comparar preços
+        history = self.load_history()
+        
+        for snap in snapshots:
+            if not snap.price or snap.error:
+                continue
+            
+            # Buscar preço anterior
+            product_history = history[
+                (history["product_id"] == snap.product_id) &
+                (history["store"] == snap.store) &
+                (history["price"].notna())
+            ].sort_values("timestamp")
+            
+            if len(product_history) < 2:
+                continue  # Precisa de pelo menos 2 registros para comparar
+            
+            previous_price = product_history.iloc[-2]["price"]
+            
+            # Obter preço desejado do produto
+            product = self.products.get(snap.product_id)
+            desired_price = product.desired_price if product else None
+            
+            # Verificar e enviar alerta
+            self.alert_manager.check_and_alert(
+                product_id=snap.product_id,
+                product_name=snap.product_name,
+                store=snap.store,
+                url=snap.url,
+                current_price=snap.price,
+                previous_price=previous_price,
+                desired_price=desired_price,
+            )
 

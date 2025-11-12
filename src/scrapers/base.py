@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlparse
 
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -58,6 +59,9 @@ class StoreScraper(abc.ABC):
         proxies = self._resolve_proxies()
         if proxies:
             self.session.proxies.update(proxies)
+        
+        # Inicializar cookies visitando a página inicial
+        self._initialize_session()
 
     @staticmethod
     def _create_session():
@@ -69,12 +73,61 @@ class StoreScraper(abc.ABC):
                 "user-agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/119.0.0.0 Safari/537.36"
+                    "Chrome/120.0.0.0 Safari/537.36"
                 ),
-                "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "accept-encoding": "gzip, deflate, br, zstd",
+                "cache-control": "max-age=0",
+                "dnt": "1",
+                "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": '"Windows"',
+                "sec-fetch-dest": "document",
+                "sec-fetch-mode": "navigate",
+                "sec-fetch-site": "none",
+                "sec-fetch-user": "?1",
+                "upgrade-insecure-requests": "1",
+                "connection": "keep-alive",
             }
         )
         return session
+    
+    def _initialize_session(self) -> None:
+        """Visita a página inicial do site para obter cookies de sessão."""
+        import time
+        import random
+        
+        # Mapear domínios base por loja
+        base_urls = {
+            "pichau": "https://www.pichau.com.br/",
+            "terabyte": "https://www.terabyteshop.com.br/",
+            "kabum": "https://www.kabum.com.br/",
+            "amazon": "https://www.amazon.com.br/",
+            "mercadolivre": "https://www.mercadolivre.com.br/",
+        }
+        
+        base_url = base_urls.get(self.store)
+        if not base_url:
+            return
+        
+        try:
+            # Pequeno delay inicial
+            time.sleep(random.uniform(0.5, 1.5))
+            
+            # Visitar página inicial para obter cookies
+            response = self.session.get(
+                base_url,
+                timeout=10,
+                allow_redirects=True,
+            )
+            
+            # Se obteve resposta, aguardar um pouco antes de fazer scraping
+            if response.status_code == 200:
+                time.sleep(random.uniform(1.0, 2.0))
+                LOGGER.debug(f"Sessão inicializada para {self.store}")
+        except Exception as e:  # noqa: BLE001
+            LOGGER.debug(f"Erro ao inicializar sessão para {self.store}: {e}")
 
     @staticmethod
     def _resolve_ssl_verification():
@@ -97,7 +150,7 @@ class StoreScraper(abc.ABC):
             proxies["https"] = https_proxy
         return proxies
 
-    @retry(wait=wait_exponential(multiplier=1, min=1, max=8), stop=stop_after_attempt(3))
+    @retry(wait=wait_exponential(multiplier=2, min=2, max=30), stop=stop_after_attempt(5))
     def fetch(self, url: str) -> PriceSnapshot:
         ctx = ScraperContext(store=self.store, url=url)
         try:
@@ -133,9 +186,55 @@ class StoreScraper(abc.ABC):
             )
 
     def _get_html(self, ctx: ScraperContext) -> str:
-        response = self.session.get(ctx.url, timeout=20)
+        import time
+        import random
+        
+        # Delay menor já que temos delay na inicialização
+        time.sleep(random.uniform(0.5, 1.5))
+        
+        response = self.session.get(
+            ctx.url,
+            timeout=20,
+            headers=self._build_request_headers(ctx),
+            allow_redirects=True,
+        )
+        
+        # Se receber 403, tentar uma vez com delay maior
+        if response.status_code == 403:
+            LOGGER.warning(f"Recebido 403 para {ctx.url}, tentando novamente após delay...")
+            time.sleep(random.uniform(3.0, 5.0))
+            
+            # Tentar novamente com headers ligeiramente diferentes
+            response = self.session.get(
+                ctx.url,
+                timeout=20,
+                headers=self._build_request_headers(ctx),
+                allow_redirects=True,
+            )
+        
         response.raise_for_status()
         return response.text
+
+    def _build_request_headers(self, ctx: ScraperContext) -> dict[str, str]:
+        parsed = urlparse(ctx.url)
+        referer = f"{parsed.scheme}://{parsed.netloc}/"
+        return {
+            "accept": (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,"
+                "image/avif,image/webp,image/apng,*/*;q=0.8"
+            ),
+            "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "cache-control": "max-age=0",
+            "referer": referer,
+            "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+        }
 
     @abc.abstractmethod
     def _parse(

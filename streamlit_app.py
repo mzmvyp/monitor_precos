@@ -8,11 +8,14 @@ import pandas as pd
 import streamlit as st
 
 from src.price_monitor import PriceMonitor
+from src.flight_monitor import FlightMonitor
 
 logging.basicConfig(level=logging.INFO)
 
 CONFIG_PATH = Path("config/products.yaml")
 HISTORY_PATH = Path("data/price_history.csv")
+FLIGHT_CONFIG_PATH = Path("config/flights.yaml")
+FLIGHT_HISTORY_PATH = Path("data/flight_history.csv")
 
 st.set_page_config(page_title="Monitor de Preços - Black Friday", layout="wide")
 
@@ -121,24 +124,94 @@ latest_df["status"] = latest_df.apply(
     axis=1,
 )
 
+# Calcular variação de preço (comparar com penúltimo registro)
+def calculate_price_trend(row):
+    """Calcula tendência de preço: subiu (🔴), estável (🟡), desceu (🟢)"""
+    try:
+        product_history = history_df[
+            (history_df["product_id"] == row["product_id"]) &
+            (history_df["store"] == row["store"]) &
+            (history_df["price"].notna())
+        ].sort_values("timestamp")
+        
+        if len(product_history) < 2:
+            return "🟡 Novo"  # Primeiro registro
+        
+        current_price = row["price"]
+        previous_price = product_history.iloc[-2]["price"]
+        
+        if pd.isna(current_price) or pd.isna(previous_price):
+            return "⚪ N/A"
+        
+        diff = current_price - previous_price
+        diff_percent = (diff / previous_price) * 100
+        
+        if diff_percent > 1:  # Subiu mais de 1%
+            return f"🔴 +R$ {diff:.2f} (+{diff_percent:.1f}%)"
+        elif diff_percent < -1:  # Caiu mais de 1%
+            return f"🟢 R$ {diff:.2f} ({diff_percent:.1f}%)"
+        else:  # Estável (variação < 1%)
+            return f"🟡 Estável ({diff_percent:.1f}%)"
+    except Exception as e:
+        return "⚪ N/A"
+
+latest_df["tendencia"] = latest_df.apply(calculate_price_trend, axis=1)
+
 st.subheader("Panorama atual")
 
+# Configurar coluna de URL como link clicável
+display_df = latest_df[
+    [
+        "product_name",
+        "store",
+        "raw_price",
+        "price",
+        "tendencia",
+        "currency",
+        "in_stock",
+        "status",
+        "timestamp",
+        "url",
+    ]
+].copy()
+
 st.dataframe(
-    latest_df[
-        [
-            "product_name",
-            "store",
-            "raw_price",
-            "price",
-            "currency",
-            "in_stock",
-            "status",
-            "timestamp",
-            "url",
-        ]
-    ],
+    display_df,
     use_container_width=True,
     hide_index=True,
+    column_config={
+        "product_name": st.column_config.TextColumn(
+            "Produto",
+            width="large"
+        ),
+        "store": st.column_config.TextColumn(
+            "Loja",
+            width="small"
+        ),
+        "raw_price": st.column_config.TextColumn(
+            "Preço Original",
+            width="small"
+        ),
+        "price": st.column_config.NumberColumn(
+            "Preço",
+            format="R$ %.2f"
+        ),
+        "tendencia": st.column_config.TextColumn(
+            "Tendência",
+            help="🔴 Subiu | 🟡 Estável | 🟢 Caiu",
+            width="medium"
+        ),
+        "timestamp": st.column_config.DatetimeColumn(
+            "Atualizado",
+            format="DD/MM/YY HH:mm"
+        ),
+        "url": st.column_config.LinkColumn(
+            "Link",
+            help="Clique para abrir a página do produto",
+            max_chars=50,
+            display_text="🔗 Abrir"
+        ),
+    }
 )
 
 st.subheader("Histórico de preços")
@@ -186,4 +259,133 @@ recent_events_display = recent_events[
 )
 
 st.table(recent_events_display)
+
+# ============================================================
+# SEÇÃO DE VOOS
+# ============================================================
+
+st.markdown("---")
+st.header("✈️ Monitor de Voos")
+
+# Botão para buscar voos
+col1, col2 = st.columns([1, 3])
+with col1:
+    if st.button("🔍 Buscar Voos Agora", help="Busca voos usando DeepSeek AI (pode demorar alguns minutos)"):
+        with st.spinner("Buscando voos... Isso pode levar alguns minutos..."):
+            try:
+                flight_monitor = FlightMonitor(
+                    config_path=FLIGHT_CONFIG_PATH,
+                    history_path=FLIGHT_HISTORY_PATH
+                )
+                flights = flight_monitor.collect()
+                flight_monitor.close()
+                st.success(f"✅ Encontrados {len(flights)} voos!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erro ao buscar voos: {e}")
+
+with col2:
+    st.info("💡 A busca de voos usa IA (DeepSeek) e pode demorar ~5 minutos. Configure em `config/flights.yaml`")
+
+# Mostrar voos salvos
+if FLIGHT_HISTORY_PATH.exists():
+    try:
+        flight_monitor_display = FlightMonitor(
+            config_path=FLIGHT_CONFIG_PATH,
+            history_path=FLIGHT_HISTORY_PATH
+        )
+        flights_df = flight_monitor_display.get_latest_flights()
+        
+        if not flights_df.empty:
+            st.subheader("🎫 Melhores Voos Encontrados")
+            
+            # Calcular tendência de preço para voos
+            def calculate_flight_trend(row):
+                """Calcula tendência de preço de voo"""
+                try:
+                    # Buscar histórico completo do voo
+                    flight_history_df = pd.read_csv(FLIGHT_HISTORY_PATH, encoding="utf-8")
+                    flight_history_df["timestamp"] = pd.to_datetime(flight_history_df["timestamp"])
+                    
+                    flight_hist = flight_history_df[
+                        (flight_history_df["origin"] == row["origin"]) &
+                        (flight_history_df["destination"] == row["destination"]) &
+                        (flight_history_df["departure_date"] == row["departure_date"]) &
+                        (flight_history_df["return_date"] == row["return_date"]) &
+                        (flight_history_df["airline"] == row["airline"])
+                    ].sort_values("timestamp")
+                    
+                    if len(flight_hist) < 2:
+                        return "🟡 Novo"
+                    
+                    current = row["price"]
+                    previous = flight_hist.iloc[-2]["price"]
+                    diff = current - previous
+                    diff_percent = (diff / previous) * 100
+                    
+                    if diff_percent > 2:
+                        return f"🔴 +R$ {diff:.0f}"
+                    elif diff_percent < -2:
+                        return f"🟢 R$ {diff:.0f}"
+                    else:
+                        return "🟡 Estável"
+                except:
+                    return "🟡 Novo"
+            
+            flights_df["tendencia"] = flights_df.apply(calculate_flight_trend, axis=1)
+            
+            # Formatar para exibição
+            display_df = flights_df[[
+                "airline",
+                "origin",
+                "destination",
+                "departure_date",
+                "return_date",
+                "price",
+                "tendencia",
+                "stops",
+                "duration",
+                "url"
+            ]].copy()
+            
+            st.dataframe(
+                display_df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "airline": st.column_config.TextColumn("Companhia", width="medium"),
+                    "origin": st.column_config.TextColumn("Origem", width="small"),
+                    "destination": st.column_config.TextColumn("Destino", width="small"),
+                    "departure_date": st.column_config.DateColumn("Ida", format="DD/MM/YYYY"),
+                    "return_date": st.column_config.DateColumn("Volta", format="DD/MM/YYYY"),
+                    "price": st.column_config.NumberColumn("Preço", format="R$ %.0f"),
+                    "tendencia": st.column_config.TextColumn(
+                        "Tendência",
+                        help="🔴 Subiu | 🟡 Estável | 🟢 Caiu",
+                        width="small"
+                    ),
+                    "stops": st.column_config.NumberColumn("Paradas", width="small"),
+                    "duration": st.column_config.TextColumn("Duração", width="small"),
+                    "url": st.column_config.LinkColumn(
+                        "Link",
+                        help="Clique para abrir no Google Flights",
+                        display_text="🔗 Ver"
+                    ),
+                }
+            )
+            
+            # Estatísticas
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("💰 Menor Preço", f"R$ {flights_df['price'].min():.2f}")
+            with col2:
+                st.metric("📊 Preço Médio", f"R$ {flights_df['price'].mean():.2f}")
+            with col3:
+                st.metric("✈️ Total de Opções", len(flights_df))
+        else:
+            st.info("📭 Nenhum voo encontrado ainda. Clique em 'Buscar Voos Agora' para começar!")
+    except Exception as e:
+        st.warning(f"⚠️ Erro ao carregar voos: {e}")
+else:
+    st.info("📭 Nenhum voo monitorado ainda. Configure em `config/flights.yaml` e clique em 'Buscar Voos Agora'!")
 
