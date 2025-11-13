@@ -452,10 +452,11 @@ class TerabyteScraper(SeleniumScraper):
                         break  # Priorizar o primeiro seletor válido
         
         if prices_collected:
-            prices_collected.sort(reverse=True)
+            # CORREÇÃO: Ordenar do MENOR para o MAIOR preço (queremos o menor!)
+            prices_collected.sort(reverse=False)
             raw_price = f"R$ {prices_collected[0][1]}"
             LOGGER.debug(
-                "Terabyte: Preço final selecionado: %s (coletados %d candidatos)",
+                "Terabyte: Preço final selecionado: %s (coletados %d candidatos, usando MENOR preço)",
                 raw_price,
                 len(prices_collected),
             )

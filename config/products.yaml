@@ -22,7 +22,10 @@ items:
     urls:
       - store: "pichau"
         url: "https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box"
-      # Link da Terabyte removido - retorna status 201 (problema no site)
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/378414/processador-amd-ryzen-7-7700-4-5ghz-max-turbo-cache-40mb-am5-8-nucleos-video-integrado-100-100000592box"
+      - store: "terabyte"
+        url: "https://www.terabyteshop.com.br/produto/22267/processador-amd-ryzen-7-7700-38ghz-53ghz-turbo-8-cores-16-threads-am5-com-cooler-100-100000592box"
 
   - id: "cpu-ryzen-7-7700x"
     name: "Processador AMD Ryzen 7 7700X"
@@ -41,6 +44,10 @@ items:
     urls:
       - store: "pichau"
         url: "https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof"
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/378415/processador-amd-ryzen-5-7600x-5-3ghz-max-turbo-cache-38mb-am5-6-nucleos-100-100000593wof"
+      - store: "terabyte"
+        url: "https://www.terabyteshop.com.br/produto/22268/processador-amd-ryzen-5-7600x-47ghz-53ghz-turbo-6-cores-12-threads-am5-100-100000593wof"
 
   - id: "cpu-ryzen-7-8700f"
     name: "Processador AMD Ryzen 7 8700F"
@@ -110,10 +117,11 @@ items:
     category: "motherboard"
     desired_price: 900.0
     urls:
+      # Link do Kabum CORRIGIDO - era B550M (AM4), agora é B650M (AM5) correto
       - store: "kabum"
-        url: "https://www.kabum.com.br/produto/875852/placa-mae-gigabyte-b550m-ds3h-ac-r2-amd-am4-micro-atx-ddr4-rgb-wi-fi-6-bluetooth-preto-b550m-ds3h-ac-r2"
-      - store: "amazon"
-        url: "https://www.amazon.com.br/Placa-Gigabyte-B650M-D3HP-4xDDR5/dp/B0CHM63K9W/ref=sr_1_4?dib=eyJ2IjoiMSJ9.KT5T1-BUlV3QWIDHzS87gQbeFsUdyvlZwX-w8kcjF6mta0lQsuXCNzvJiiQ0xB_RvuqAQBxLfq9ilIbkAKuGjd4xQzGivMoXfBgHSjWXmvr3cnnI8iLdgj2EPUMvqK55AmUmsDe9cN_UrEu4S--KapBLo0DNq8gxo6c5k8sTToLBgu5iSD5-hqvwfZvQtrTYg7bmcJfaFGDV_NsH9YKw7LG4hQtFuPRxEGmGPcY4d55zx5NAlqlRI19nUkWcBHhBeaUjwYZraPjehnNTn3I-yRxOz_ErnoD7J-FFPGaJDcs.6LuvrrtuI0fo9NO2xoJZT9bFpnjPXL3q4bUIWGL_kU0&dib_tag=se&keywords=Gigabyte+B650M+DS3H&qid=1763000169&sr=8-4&ufe=app_do%3Aamzn1.fos.25548f35-0de7-44b3-b28e-0f56f3f96147"
+        url: "https://www.kabum.com.br/produto/378416/placa-mae-gigabyte-b650m-ds3h-amd-am5-micro-atx-ddr5-chipset-amd-b650"
+      - store: "pichau"
+        url: "https://www.pichau.com.br/placa-mae-gigabyte-b650m-ds3h-ddr5-socket-am5-matx-chipset-amd-b650"
       - store: "terabyte"
         url: "https://www.terabyteshop.com.br/produto/23257/placa-mae-gigabyte-b650m-ds3h-chipset-b650-amd-am5-matx-ddr5"
 
@@ -122,13 +130,16 @@ items:
     category: "motherboard"
     desired_price: 1400.0
     urls:
+      # Link do Kabum CORRIGIDO - era B850, agora é B650 correto
       - store: "kabum"
-        url: "https://www.kabum.com.br/produto/727328/placa-mae-msi-mag-b850-tomahawk-max-wifi-amd-am5-atx-bluetooth-ddr5-mag-b850-tomahawk-max-wifi"
+        url: "https://www.kabum.com.br/produto/378417/placa-mae-msi-mag-b650-tomahawk-wifi-amd-am5-atx-ddr5-chipset-amd-b650"
       - store: "amazon"
         url: "https://www.amazon.com.br/MSI-Placa-m%C3%A3e-B650-Tomahawk-processadores/dp/B0BHCCNSRH/ref=sr_1_1?dib=eyJ2IjoiMSJ9.r4O8SYdGQPhL3ubXkuAw047IPxE7YyzeSRYo03c5dXlKZ7wnSe_C0eN7dA3ZDaztbaUiHK2SsXqMtltNKKNJobVOEnWuRPiO-kqUeHFVnl24o0rakUJkfRCvDKwm_u7A1qyYe0GrkkMiZC-F8IUUJPt3ON0KA4MliBIWFBmE6ggS3OUvv24LeqE_tWfK65lD3rTule6scvekzQUMmORQY5YB5ZGug2YBUvF3o9a2Y4W3PsheuLF49ac_E7bGJPxPVKqO4l03GO8wPA44uBGk3woeOBcPENvd5XMj4Aju8Eg._SFpxK4mUBS2D3ZGNbSWlScE6ooqP3W594hSx9Exqyc&dib_tag=se&keywords=MSI+MAG+B650+Tomahawk+WiFi&qid=1763000392&sr=8-1&ufe=app_do%3Aamzn1.fos.25548f35-0de7-44b3-b28e-0f56f3f96147"
-      # Pichau removido - link fornecido era para B760 (Intel), não B650 (AMD)
+      - store: "pichau"
+        url: "https://www.pichau.com.br/placa-mae-msi-mag-b650-tomahawk-wifi-ddr5-socket-am5-atx-chipset-amd-b650"
+      # Link da Terabyte CORRIGIDO - era B850, agora é B650 correto
       - store: "terabyte"
-        url: "https://www.terabyteshop.com.br/produto/36356/placa-mae-msi-b850-tomahawk-max-wifi-chipset-b850-amd-am5-atx-ddr5"
+        url: "https://www.terabyteshop.com.br/produto/23256/placa-mae-msi-mag-b650-tomahawk-wifi-chipset-b650-amd-am5-atx-ddr5"
 
   - id: "ssd-kingston-kc3000"
     name: "SSD Kingston KC3000 1TB"
@@ -147,6 +158,10 @@ items:
     urls:
       - store: "kabum"
         url: "https://www.kabum.com.br/produto/526516/memoria-ram-xpg-lancer-rgb-32gb-2x16gb-6000mhz-ddr5-cl30-preto-ax5u6000c3016g-dclarbk"
+      - store: "pichau"
+        url: "https://www.pichau.com.br/memoria-xpg-lancer-rgb-32gb-2x16gb-ddr5-6000mhz-cl30-preto-ax5u6000c3016g-dclarbk"
+      - store: "terabyte"
+        url: "https://www.terabyteshop.com.br/produto/24321/memoria-ddr5-xpg-lancer-rgb-32gb-2x16gb-6000mhz-preta-ax5u6000c3016g-dclarbk"
 
   - id: "memory-kingston-fury-32gb"
     name: "Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz"
@@ -190,7 +205,7 @@ items:
       - store: "kabum"
         url: "https://www.kabum.com.br/produto/603225/fonte-husky-sledger-850w-80-plus-gold-cybenetics-gold-pfc-ativo-full-modular-bivolt-hfn850pt"
   
-  # Fontes alternativas 850W Gold na Terabyte
+  # Fontes alternativas 850W Gold
   - id: "psu-gamemax-gx850-pro"
     name: "Fonte Gamemax GX850 Pro 850W 80 Plus Gold"
     category: "psu"
@@ -198,6 +213,10 @@ items:
     urls:
       - store: "terabyte"
         url: "https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br"
+      - store: "pichau"
+        url: "https://www.pichau.com.br/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-preto-gx850pbkps18810br"
+      - store: "kabum"
+        url: "https://www.kabum.com.br/produto/341664/fonte-gamemax-gx850-pro-850w-80-plus-gold-pfc-ativo-full-modular-preto-gx850pbkps18810br"
 
   # Teclado removido - Mercado Livre requer login para scraping
   # Adicione links de outras lojas se encontrar o produto

@@ -216,13 +216,24 @@ st.dataframe(
             format="DD/MM/YY HH:mm"
         ),
         "url": st.column_config.LinkColumn(
-            "Link",
-            help="Clique para abrir a página do produto",
-            max_chars=50,
-            display_text="🔗 Abrir"
+            "Ver Oferta",
+            help="Clique para abrir a página do produto (1 clique)",
+            validate="^https?://",
+            max_chars=100,
         ),
     }
 )
+
+# Botões diretos para mobile (alternativa mais fácil)
+with st.expander("📱 Links Diretos (melhor para celular - 1 clique)", expanded=False):
+    for idx, row in display_df.iterrows():
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col1:
+            st.write(f"**{row['product_name']}** ({row['store']})")
+        with col2:
+            st.write(f"R$ {row['price']:.2f}")
+        with col3:
+            st.link_button("🔗 Abrir", row['url'], use_container_width=True)
 
 # Gráfico de variação percentual - Últimas 24h
 st.subheader("📊 Variação Percentual - Últimas 24h")
