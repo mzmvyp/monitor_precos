@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -109,6 +109,9 @@ history_df["timestamp"] = pd.to_datetime(history_df["timestamp"], utc=True)
 if selected_category != "Todas":
     history_df = history_df[history_df["category"] == selected_category]
 
+# Filtrar apenas produtos que ainda existem no config
+history_df = history_df[history_df["product_id"].isin(products.keys())]
+
 latest_df = (
     history_df.sort_values("timestamp")
     .groupby(["product_id", "store"])
@@ -117,10 +120,13 @@ latest_df = (
 )
 
 latest_df["status"] = latest_df.apply(
-    lambda row: "Abaixo da meta" if pd.notna(row["price"])
-    and pd.notna(products[row["product_id"]].desired_price)
-    and row["price"] <= products[row["product_id"]].desired_price
-    else "Acima da meta",
+    lambda row: "Abaixo da meta" if (
+        pd.notna(row["price"])
+        and row["product_id"] in products
+        and pd.notna(products[row["product_id"]].desired_price)
+        and row["price"] <= products[row["product_id"]].desired_price
+    )
+    else "Acima da meta" if row["product_id"] in products else "Produto removido",
     axis=1,
 )
 
@@ -128,6 +134,10 @@ latest_df["status"] = latest_df.apply(
 def calculate_price_trend(row):
     """Calcula tendência de preço: subiu (🔴), estável (🟡), desceu (🟢)"""
     try:
+        # Verificar se produto ainda existe no config
+        if row["product_id"] not in products:
+            return "⚪ Removido"
+        
         product_history = history_df[
             (history_df["product_id"] == row["product_id"]) &
             (history_df["store"] == row["store"]) &
@@ -214,17 +224,65 @@ st.dataframe(
     }
 )
 
+# Gráfico de variação percentual - Últimas 24h
+st.subheader("📊 Variação Percentual - Últimas 24h")
+
+last_24h = history_df[
+    (history_df['timestamp'] > (datetime.now(timezone.utc) - timedelta(hours=24))) &
+    (history_df['price'].notna())
+]
+
+if not last_24h.empty:
+    variations = []
+    # Filtrar apenas produtos que existem no config
+    valid_product_ids = set(products.keys()) & set(last_24h['product_id'].unique())
+    for product_id in valid_product_ids:
+        product_data = last_24h[last_24h['product_id'] == product_id]
+        if len(product_data) >= 2:
+            # Pegar primeiro e último preço
+            product_data_sorted = product_data.sort_values('timestamp')
+            first_price = product_data_sorted.iloc[0]['price']
+            last_price = product_data_sorted.iloc[-1]['price']
+            
+            if pd.notna(first_price) and pd.notna(last_price) and first_price > 0:
+                variation = ((last_price - first_price) / first_price) * 100
+                variations.append({
+                    'Produto': products[product_id].name if product_id in products else f"Produto {product_id} (removido)",
+                    'Variação (%)': round(variation, 2),
+                    'Status': '📈' if variation > 0 else '📉' if variation < 0 else '➡️'
+                })
+    
+    if variations:
+        var_df = pd.DataFrame(variations)
+        var_df = var_df.sort_values('Variação (%)')
+        
+        # Gráfico de barras
+        st.bar_chart(var_df.set_index('Produto')['Variação (%)'], height=300)
+        
+        # Tabela com detalhes
+        with st.expander("📋 Ver detalhes das variações"):
+            st.dataframe(var_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("Não há dados suficientes para calcular variações nas últimas 24h")
+else:
+    st.info("Não há dados coletados nas últimas 24h")
+
 st.subheader("Histórico de preços")
 
-selected_history_products = st.multiselect(
-    "Selecione produtos para visualizar o histórico",
-    options=list(product_options.keys()),
-    default=list(product_options.keys())[:3],
-)
+if product_options:
+    selected_history_products = st.multiselect(
+        "Selecione produtos para visualizar o histórico",
+        options=list(product_options.keys()),
+        default=list(product_options.keys())[:3] if len(product_options) >= 3 else list(product_options.keys()),
+    )
+else:
+    selected_history_products = []
 
 if selected_history_products:
     selected_ids = [product_options[name] for name in selected_history_products]
-    filtered_history = history_df[history_df["product_id"].isin(selected_ids)]
+    # Filtrar apenas IDs que existem no histórico e no config
+    valid_ids = [pid for pid in selected_ids if pid in products and pid in history_df["product_id"].values]
+    filtered_history = history_df[history_df["product_id"].isin(valid_ids)] if valid_ids else pd.DataFrame()
 
     chart_data = (
         filtered_history.dropna(subset=["price"])

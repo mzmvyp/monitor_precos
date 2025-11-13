@@ -9,3 +9,14 @@ timestamp,product_id,product_name,store,current_price,previous_price,reduction_p
 2025-11-12 12:23:17.355286+00:00,motherboard-gigabyte-b650-aorus-elite,Placa-Mãe Gigabyte B650 Aorus Elite AX,kabum,1999.99,2637.77,24.178757056149703,True
 2025-11-12 14:23:32.958650+00:00,motherboard-gigabyte-b650m-ds3h,Placa-Mãe Gigabyte B650M DS3H,terabyte,689.9,999.99,31.00931009310093,True
 2025-11-12 18:24:05.479373+00:00,cpu-ryzen-7-7700x,Processador AMD Ryzen 7 7700X,terabyte,3499.9,3999.9,12.500312507812694,True
+2025-11-12 21:07:08.165760+00:00,motherboard-asus-tuf-b650m-plus,Placa-Mãe ASUS TUF Gaming B650M-PLUS,pichau,4999.99,5393.59,7.29755135262414,True
+2025-11-12 21:07:17.122691+00:00,motherboard-gigabyte-b650-aorus-elite,Placa-Mãe Gigabyte B650 Aorus Elite AX,pichau,4999.99,5393.59,7.29755135262414,True
+2025-11-12 21:07:23.505691+00:00,motherboard-gigabyte-b650m-ds3h,Placa-Mãe Gigabyte B650M DS3H,pichau,4999.99,5393.59,7.29755135262414,True
+2025-11-12 21:07:29.239625+00:00,motherboard-msi-b650-tomahawk-wifi,Placa-Mãe MSI MAG B650 Tomahawk WiFi,pichau,4999.99,5393.59,7.29755135262414,True
+2025-11-12 21:07:34.838713+00:00,psu-husky-sledger-850w,Fonte Husky Sledger 850W 80 Plus Gold,kabum,599.9,759.9,21.05540202658245,True
+2025-11-12 22:06:34.170755+00:00,motherboard-msi-b650-tomahawk-wifi,Placa-Mãe MSI MAG B650 Tomahawk WiFi,terabyte,999.9,1037.23,3.599008898701353,True
+2025-11-13 00:06:39.187725+00:00,motherboard-gigabyte-b650m-ds3h,Placa-Mãe Gigabyte B650M DS3H,terabyte,789.99,999.99,21.00021000210002,True
+2025-11-13 00:21:24.634819+00:00,flight-flight-italy-sep2026-GRU-MXP,Voo GRU → MXP (2026-08-31),Air France,4471.0,4476.0,0.1117068811438784,True
+2025-11-13 00:21:29.447985+00:00,flight-flight-italy-sep2026-GRU-MXP,Voo GRU → MXP (2026-08-31),LATAM,4471.0,4476.0,0.1117068811438784,True
+2025-11-13 00:21:35.420184+00:00,flight-flight-italy-sep2026-GRU-MXP,Voo GRU → MXP (2026-08-31),Gol,4471.0,4476.0,0.1117068811438784,True
+2025-11-13 01:06:44.855590+00:00,motherboard-asus-tuf-b650m-e,Placa-Mãe ASUS TUF Gaming B650M-E WiFi,amazon,1377.4,1600.0,13.912499999999994,True

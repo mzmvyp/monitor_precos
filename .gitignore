@@ -38,6 +38,10 @@ testar_*.bat
 testar_*.py
 validar_*.bat
 _*.bat
+listar_*.py
+LINKS_*.txt
+instalar_*.bat
+git_commit_*.bat
 
 # Logs
 *.log

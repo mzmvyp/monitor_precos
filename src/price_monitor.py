@@ -15,6 +15,7 @@ from .scrapers import AmazonScraper, KabumScraper, MercadoLivreScraper, RoyalCar
 from .scrapers.terabyte import TerabyteScraper
 from .scrapers.pichau import PichauScraper
 from .scrapers.base import StoreScraper
+from .price_cache import PriceCacheManager
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,11 +44,13 @@ class PriceMonitor:
         config_path: Path = Path("config/products.yaml"),
         history_path: Path = Path("data/price_history.csv"),
         enable_alerts: bool = True,
+        enable_cache: bool = True,
     ) -> None:
         self.config_path = config_path
         self.history_path = history_path
         self.products = load_products_config(config_path)
         self.alert_manager = AlertManager() if enable_alerts else None
+        self.cache = PriceCacheManager() if enable_cache else None
 
     def available_categories(self) -> set[str]:
         return {product.category for product in self.products.values()}
@@ -73,11 +76,14 @@ class PriceMonitor:
             )
             df.to_csv(self.history_path, index=False, encoding="utf-8")
 
-    def collect(self, product_ids: Sequence[str] | None = None) -> list[PriceSnapshot]:
+    def collect(self, product_ids: Sequence[str] | None = None, max_retries: int = 3) -> list[PriceSnapshot]:
+        """Coleta preços com retry automático para lojas problemáticas."""
         self._ensure_history_file()
         targets = product_ids or list(self.products.keys())
 
         snapshots: list[PriceSnapshot] = []
+        failed_stores: dict[str, int] = {}  # store -> tentativas
+        
         for product_id in targets:
             product = self.products.get(product_id)
             if not product:
@@ -85,28 +91,105 @@ class PriceMonitor:
                 continue
 
             for product_url in product.urls:
-                scraper = get_scrapers().get(product_url.store)
-                if not scraper:
-                    LOGGER.warning("Loja %s não suportada ainda", product_url.store)
-                    continue
+                store = product_url.store
+                
+                # Verificar cache primeiro
+                if self.cache:
+                    cached = self.cache.get(product.id, store, product_url.url)
+                    if cached:
+                        LOGGER.info("Usando preço do cache: %s (%s) - R$ %.2f", 
+                                  product.name, store, cached.price)
+                        snapshots.append(
+                            PriceSnapshot(
+                                product_id=product.id,
+                                product_name=product.name,
+                                category=product.category,
+                                store=store,
+                                url=product_url.url,
+                                price=cached.price,
+                                raw_price=cached.raw_price,
+                                currency="BRL",
+                                in_stock=None,
+                                fetched_at=datetime.now(timezone.utc),
+                                error=None,
+                            )
+                        )
+                        continue
+                
+                # Retry para lojas problemáticas
+                for attempt in range(max_retries):
+                    scraper = get_scrapers().get(store)
+                    if not scraper:
+                        LOGGER.warning("Loja %s não suportada ainda", store)
+                        break
 
-                LOGGER.info("Coletando %s (%s)", product.name, product_url.store)
-                snapshot = scraper.fetch(product_url.url)
-                snapshots.append(
-                    PriceSnapshot(
-                        product_id=product.id,
-                        product_name=product.name,
-                        category=product.category,
-                        store=snapshot.store,
-                        url=product_url.url,
-                        price=snapshot.price,
-                        raw_price=snapshot.raw_price,
-                        currency=snapshot.currency,
-                        in_stock=snapshot.in_stock,
-                        fetched_at=snapshot.fetched_at,
-                        error=snapshot.error,
-                    )
-                )
+                    LOGGER.info("Coletando %s (%s) - Tentativa %d/%d", product.name, store, attempt + 1, max_retries)
+                    
+                    try:
+                        snapshot = scraper.fetch(product_url.url)
+                        
+                        # Armazenar no cache se sucesso
+                        if self.cache and snapshot.price and not snapshot.error:
+                            self.cache.set(
+                                product.id, store, product_url.url,
+                                snapshot.price, snapshot.raw_price
+                            )
+                        
+                        # Se teve erro, tentar novamente
+                        if snapshot.error and attempt < max_retries - 1:
+                            failed_stores[store] = failed_stores.get(store, 0) + 1
+                            wait_time = 30 * (attempt + 1)  # Delay progressivo
+                            LOGGER.warning("Erro ao coletar %s (%s), aguardando %ds antes de retry...", 
+                                         product.name, store, wait_time)
+                            import time
+                            time.sleep(wait_time)
+                            continue
+                        
+                        snapshots.append(
+                            PriceSnapshot(
+                                product_id=product.id,
+                                product_name=product.name,
+                                category=product.category,
+                                store=snapshot.store,
+                                url=product_url.url,
+                                price=snapshot.price,
+                                raw_price=snapshot.raw_price,
+                                currency=snapshot.currency,
+                                in_stock=snapshot.in_stock,
+                                fetched_at=snapshot.fetched_at,
+                                error=snapshot.error,
+                            )
+                        )
+                        break  # Sucesso, sair do loop de retry
+                        
+                    except Exception as e:
+                        if attempt < max_retries - 1:
+                            failed_stores[store] = failed_stores.get(store, 0) + 1
+                            wait_time = 30 * (attempt + 1)
+                            LOGGER.warning("Exceção ao coletar %s (%s): %s. Aguardando %ds...", 
+                                         product.name, store, e, wait_time)
+                            import time
+                            time.sleep(wait_time)
+                        else:
+                            # Última tentativa falhou
+                            snapshots.append(
+                                PriceSnapshot(
+                                    product_id=product.id,
+                                    product_name=product.name,
+                                    category=product.category,
+                                    store=store,
+                                    url=product_url.url,
+                                    price=None,
+                                    raw_price=None,
+                                    currency="BRL",
+                                    in_stock=None,
+                                    fetched_at=datetime.now(timezone.utc),
+                                    error=str(e),
+                                )
+                            )
+
+        if failed_stores:
+            LOGGER.info(f"Lojas com falhas (após retries): {failed_stores}")
 
         enriched = attach_target_price(snapshots, self.products)
         self._append_history(enriched)

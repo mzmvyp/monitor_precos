@@ -9,6 +9,7 @@ tenacity>=8.2.3
 # Selenium para scraping com navegador real
 selenium>=4.15.0
 webdriver-manager>=4.0.1
+undetected-chromedriver>=3.5.4  # Bypass Cloudflare para Terabyte
 
 # DeepSeek API para agent de voos (usa requests, já incluído)
 
