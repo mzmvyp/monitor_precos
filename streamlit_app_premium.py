@@ -299,8 +299,36 @@ with tab1:
         if any(item['id'] == prod_id and item.get('enabled', True) for item in yaml_config['items'])
     }
 
-    # Métricas principais
-    col1, col2, col3, col4 = st.columns(4)
+    # Carregar histórico antes das métricas
+    history_df = monitor.load_history()
+
+    # Calcular economia total e alertas
+    total_savings = 0.0
+    products_below_target = 0
+    recent_alerts = []
+
+    if not history_df.empty:
+        history_df["timestamp"] = pd.to_datetime(history_df["timestamp"], utc=True)
+        latest_prices = history_df.sort_values("timestamp").groupby(["product_id", "store"]).tail(1)
+
+        for _, row in latest_prices.iterrows():
+            product = active_products.get(row["product_id"])
+            if product and pd.notna(row["price"]) and pd.notna(product.desired_price):
+                if row["price"] <= product.desired_price:
+                    savings = product.desired_price - row["price"]
+                    total_savings += savings
+                    products_below_target += 1
+                    recent_alerts.append({
+                        'product_name': row['product_name'],
+                        'store': row['store'],
+                        'price': row['price'],
+                        'target': product.desired_price,
+                        'savings': savings,
+                        'timestamp': row['timestamp']
+                    })
+
+    # Métricas principais (agora com 5 colunas)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
         st.metric("📦 Produtos Ativos", len(active_products), delta=None)
@@ -311,9 +339,41 @@ with tab1:
         categories = len(set(p.category for p in active_products.values()))
         st.metric("📂 Categorias", categories)
     with col4:
-        history_df = monitor.load_history()
         total_checks = len(history_df) if not history_df.empty else 0
         st.metric("🔍 Verificações", total_checks)
+    with col5:
+        st.metric("💰 Economia Total", f"R$ {total_savings:.2f}",
+                 delta=f"{products_below_target} produtos" if products_below_target > 0 else None,
+                 delta_color="normal")
+
+    st.markdown("---")
+
+    # Banner de Notificações/Alertas
+    if recent_alerts:
+        st.markdown("### 🔔 **Alertas Ativos**")
+
+        # Ordenar por maior economia
+        recent_alerts.sort(key=lambda x: x['savings'], reverse=True)
+        top_alerts = recent_alerts[:3]  # Mostrar top 3
+
+        alert_cols = st.columns(len(top_alerts))
+        for idx, alert in enumerate(top_alerts):
+            with alert_cols[idx]:
+                savings_percent = (alert['savings'] / alert['target']) * 100
+                st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                            padding: 15px; border-radius: 10px; color: white; text-align: center;">
+                    <h4 style="margin: 0; font-size: 0.9em;">🎯 {alert['product_name'][:30]}...</h4>
+                    <p style="margin: 5px 0; font-size: 1.2em; font-weight: bold;">
+                        R$ {alert['price']:.2f}
+                    </p>
+                    <p style="margin: 0; font-size: 0.85em; opacity: 0.9;">
+                        Economize R$ {alert['savings']:.2f} ({savings_percent:.1f}%) na {alert['store'].upper()}
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        st.markdown("---")
 
     st.markdown("---")
 
@@ -465,6 +525,133 @@ with tab1:
 
             with view_tab1:
                 st.subheader("⭐ Melhores Ofertas do Momento")
+
+                # === SEÇÃO: Gráfico de Evolução de Preço (7 dias) ===
+                st.markdown("### 📊 **Evolução de Preços (Últimos 7 dias)**")
+
+                # Filtrar últimos 7 dias
+                seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+                recent_history = history_df[history_df['timestamp'] >= seven_days_ago].copy()
+
+                if not recent_history.empty and len(active_products) > 0:
+                    # Seletor de produto para ver evolução
+                    product_names = {prod.name: prod_id for prod_id, prod in active_products.items()}
+                    selected_product_name = st.selectbox(
+                        "Selecione um produto para ver a evolução:",
+                        options=list(product_names.keys()),
+                        key="evolution_product_select"
+                    )
+
+                    if selected_product_name:
+                        selected_prod_id = product_names[selected_product_name]
+                        product_evolution = recent_history[
+                            recent_history['product_id'] == selected_prod_id
+                        ].copy()
+
+                        if not product_evolution.empty:
+                            # Criar gráfico com Plotly
+                            try:
+                                import plotly.graph_objects as go
+
+                                fig = go.Figure()
+
+                                # Adicionar linha para cada loja
+                                for store in product_evolution['store'].unique():
+                                    store_data = product_evolution[product_evolution['store'] == store].sort_values('timestamp')
+
+                                    fig.add_trace(go.Scatter(
+                                        x=store_data['timestamp'],
+                                        y=store_data['price'],
+                                        mode='lines+markers',
+                                        name=store.upper(),
+                                        line=dict(width=2),
+                                        marker=dict(size=8)
+                                    ))
+
+                                # Adicionar linha do preço desejado
+                                product_obj = active_products[selected_prod_id]
+                                if product_obj.desired_price:
+                                    fig.add_hline(
+                                        y=product_obj.desired_price,
+                                        line_dash="dash",
+                                        line_color="green",
+                                        annotation_text=f"Meta: R$ {product_obj.desired_price:.2f}",
+                                        annotation_position="right"
+                                    )
+
+                                fig.update_layout(
+                                    title=f"Evolução de Preço - {selected_product_name}",
+                                    xaxis_title="Data",
+                                    yaxis_title="Preço (R$)",
+                                    hovermode='x unified',
+                                    height=400
+                                )
+
+                                st.plotly_chart(fig, use_container_width=True)
+                            except ImportError:
+                                st.info("📊 Instale plotly para ver gráficos interativos: `pip install plotly`")
+                        else:
+                            st.info("📭 Sem dados dos últimos 7 dias para este produto.")
+                else:
+                    st.info("📭 Sem dados suficientes para mostrar evolução de preços.")
+
+                st.markdown("---")
+
+                # === SEÇÃO: Ranking de Lojas ===
+                st.markdown("### 🏆 **Ranking de Lojas**")
+                st.markdown("##### Qual loja tem os melhores preços?")
+
+                # Calcular ranking
+                store_stats = {}
+                for _, row in latest_df.iterrows():
+                    store = row['store']
+                    if store not in store_stats:
+                        store_stats[store] = {
+                            'total_products': 0,
+                            'below_target': 0,
+                            'avg_price': [],
+                            'total_savings': 0.0
+                        }
+
+                    store_stats[store]['total_products'] += 1
+                    if pd.notna(row['price']):
+                        store_stats[store]['avg_price'].append(row['price'])
+
+                    if row['status'] == '✅ Abaixo da meta':
+                        store_stats[store]['below_target'] += 1
+                        product = products.get(row["product_id"])
+                        if product and pd.notna(product.desired_price):
+                            savings = product.desired_price - row['price']
+                            store_stats[store]['total_savings'] += savings
+
+                # Ordenar por número de produtos abaixo da meta
+                ranked_stores = sorted(
+                    store_stats.items(),
+                    key=lambda x: (x[1]['below_target'], x[1]['total_savings']),
+                    reverse=True
+                )
+
+                # Exibir ranking em colunas
+                rank_cols = st.columns(min(4, len(ranked_stores)))
+                for idx, (store, stats) in enumerate(ranked_stores[:4]):
+                    with rank_cols[idx]:
+                        medal = ["🥇", "🥈", "🥉", "🏅"][min(idx, 3)]
+                        avg_price = sum(stats['avg_price']) / len(stats['avg_price']) if stats['avg_price'] else 0
+
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    padding: 15px; border-radius: 10px; color: white; text-align: center;">
+                            <h3 style="margin: 0;">{medal} {store.upper()}</h3>
+                            <p style="margin: 5px 0; font-size: 1.1em;">
+                                <strong>{stats['below_target']}</strong> produtos no preço
+                            </p>
+                            <p style="margin: 0; font-size: 0.9em; opacity: 0.9;">
+                                Economia: R$ {stats['total_savings']:.2f}
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                st.markdown("---")
 
                 # Separar produtos por relevância
                 below_target = latest_df[latest_df["status"] == "✅ Abaixo da meta"].copy()
@@ -1100,6 +1287,106 @@ with tab3:
         st.success(f"💰 Economia total potencial: **R$ {total_savings:.2f}**")
     else:
         st.info("Nenhum produto abaixo da meta no momento")
+
+    st.markdown("---")
+
+    # === SEÇÃO: Histórico de Alertas ===
+    st.subheader("⏰ Histórico de Alertas")
+    st.markdown("##### Quando os produtos atingiram o preço desejado")
+
+    if not history_df.empty:
+        # Criar log de alertas (quando preço ficou <= meta)
+        alerts_log = []
+
+        for product_id, product in products.items():
+            if not pd.notna(product.desired_price):
+                continue
+
+            product_history = history_df[
+                (history_df["product_id"] == product_id) &
+                (history_df["price"].notna()) &
+                (history_df["price"] <= product.desired_price)
+            ].sort_values("timestamp")
+
+            if not product_history.empty:
+                # Pegar o primeiro alerta e o mais recente
+                first_alert = product_history.iloc[0]
+                last_alert = product_history.iloc[-1]
+
+                # Contar quantas vezes atingiu
+                unique_dates = product_history.groupby(product_history['timestamp'].dt.date).size()
+
+                alerts_log.append({
+                    'produto': product.name,
+                    'loja': first_alert['store'],
+                    'primeira_vez': first_alert['timestamp'],
+                    'ultima_vez': last_alert['timestamp'],
+                    'melhor_preco': product_history['price'].min(),
+                    'preco_meta': product.desired_price,
+                    'economia_max': product.desired_price - product_history['price'].min(),
+                    'vezes_atingido': len(unique_dates)
+                })
+
+        if alerts_log:
+            alerts_df = pd.DataFrame(alerts_log).sort_values('ultima_vez', ascending=False)
+
+            # Separar em tabs: Recentes e Histórico Completo
+            alert_tab1, alert_tab2 = st.tabs(["🔥 Recentes (Última Semana)", "📜 Histórico Completo"])
+
+            with alert_tab1:
+                # Filtrar última semana
+                one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+                recent_alerts_df = alerts_df[alerts_df['ultima_vez'] >= one_week_ago]
+
+                if not recent_alerts_df.empty:
+                    for _, alert in recent_alerts_df.head(10).iterrows():
+                        col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+
+                        with col1:
+                            st.markdown(f"**{alert['produto']}**")
+                            st.caption(f"🏪 {alert['loja'].upper()}")
+
+                        with col2:
+                            st.metric("Melhor Preço", f"R$ {alert['melhor_preco']:.2f}")
+
+                        with col3:
+                            st.metric("Economia", f"R$ {alert['economia_max']:.2f}")
+
+                        with col4:
+                            days_ago = (datetime.now(timezone.utc) - alert['ultima_vez']).days
+                            if days_ago == 0:
+                                st.caption("🟢 Hoje")
+                            elif days_ago == 1:
+                                st.caption("🟡 Ontem")
+                            else:
+                                st.caption(f"⚪ {days_ago}d atrás")
+
+                        st.divider()
+                else:
+                    st.info("📭 Nenhum produto atingiu o preço na última semana.")
+
+            with alert_tab2:
+                st.dataframe(
+                    alerts_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        'produto': st.column_config.TextColumn('Produto', width="large"),
+                        'loja': st.column_config.TextColumn('Loja', width="small"),
+                        'primeira_vez': st.column_config.DatetimeColumn('Primeira Vez', format="DD/MM/YY HH:mm"),
+                        'ultima_vez': st.column_config.DatetimeColumn('Última Vez', format="DD/MM/YY HH:mm"),
+                        'melhor_preco': st.column_config.NumberColumn('Melhor Preço', format="R$ %.2f"),
+                        'preco_meta': st.column_config.NumberColumn('Meta', format="R$ %.2f"),
+                        'economia_max': st.column_config.NumberColumn('Economia Máx', format="R$ %.2f"),
+                        'vezes_atingido': st.column_config.NumberColumn('Vezes Atingido', format="%d dias"),
+                    }
+                )
+
+                st.info(f"📊 Total de {len(alerts_df)} produtos já atingiram o preço desejado")
+        else:
+            st.info("📭 Nenhum produto atingiu o preço desejado ainda.")
+    else:
+        st.info("📭 Sem dados de histórico disponíveis.")
 
     st.markdown("---")
 
