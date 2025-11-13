@@ -460,59 +460,177 @@ with tab1:
                 axis=1,
             )
 
-            st.subheader("📋 Panorama Atual")
-
             # Tabs para visualizações diferentes
-            view_tab1, view_tab2 = st.tabs(["📊 Tabela", "📱 Cards"])
+            view_tab1, view_tab2 = st.tabs(["⭐ Destaques", "📚 Catálogo Completo"])
 
             with view_tab1:
-                display_df = latest_df[[
-                    "product_name",
-                    "store",
-                    "raw_price",
-                    "price",
-                    "tendencia",
-                    "status",
-                    "timestamp",
-                    "url",
-                ]].copy()
+                st.subheader("⭐ Melhores Ofertas do Momento")
 
-                st.dataframe(
-                    display_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "product_name": st.column_config.TextColumn("Produto", width="large"),
-                        "store": st.column_config.TextColumn("Loja", width="small"),
-                        "raw_price": st.column_config.TextColumn("Preço Original", width="small"),
-                        "price": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
-                        "tendencia": st.column_config.TextColumn("Tendência", width="medium"),
-                        "status": st.column_config.TextColumn("Status", width="medium"),
-                        "timestamp": st.column_config.DatetimeColumn("Atualizado", format="DD/MM/YY HH:mm"),
-                        "url": st.column_config.LinkColumn("Ver Oferta"),
-                    }
-                )
+                # Separar produtos por relevância
+                below_target = latest_df[latest_df["status"] == "✅ Abaixo da meta"].copy()
+                price_drops = latest_df[latest_df["tendencia"].str.contains("🟢", na=False)].copy()
+
+                # Seção 1: Produtos abaixo do preço desejado (OPORTUNIDADES!)
+                if not below_target.empty:
+                    st.markdown("### 🎯 **Atingiram o preço desejado!**")
+                    st.markdown("##### Produtos que estão no preço que você quer ou abaixo:")
+
+                    for idx, row in below_target.head(10).iterrows():
+                        product = products.get(row["product_id"])
+                        if product and pd.notna(row["price"]):
+                            savings = product.desired_price - row["price"]
+                            savings_percent = (savings / product.desired_price) * 100
+
+                            col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+                            with col1:
+                                st.markdown(f"**{row['product_name']}**")
+                                st.caption(f"🏪 {row['store'].upper()}")
+                            with col2:
+                                st.metric("Preço Atual", f"R$ {row['price']:.2f}")
+                            with col3:
+                                st.metric("Meta", f"R$ {product.desired_price:.2f}")
+                            with col4:
+                                st.metric("Economia", f"R$ {savings:.2f}", delta=f"-{savings_percent:.1f}%")
+                                st.link_button("🛒 Ver Oferta", row["url"], use_container_width=True)
+                    st.markdown("---")
+                else:
+                    st.info("📭 Nenhum produto atingiu o preço desejado ainda. Continue monitorando!")
+
+                # Seção 2: Maiores quedas de preço
+                if not price_drops.empty:
+                    st.markdown("### 📉 **Quedas de Preço Recentes**")
+                    st.markdown("##### Produtos que baixaram de preço desde a última verificação:")
+
+                    # Ordenar por maior queda
+                    price_drops_sorted = price_drops.sort_values(
+                        by="tendencia",
+                        ascending=True
+                    ).head(5)
+
+                    for idx, row in price_drops_sorted.iterrows():
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        with col1:
+                            st.markdown(f"**{row['product_name']}**")
+                            st.caption(f"🏪 {row['store'].upper()} • {row['tendencia']}")
+                        with col2:
+                            st.metric("Preço", f"R$ {row['price']:.2f}")
+                        with col3:
+                            st.link_button("🛒 Ver", row["url"], use_container_width=True)
+                    st.markdown("---")
+
+                # Seção 3: Top ofertas por categoria
+                st.markdown("### 🏆 **Melhores Preços por Categoria**")
+                st.markdown("##### O produto mais barato de cada categoria:")
+
+                # Agrupar por categoria e pegar o menor preço
+                categories = latest_df[latest_df["price"].notna()].groupby("category")
+
+                cols = st.columns(2)
+                for col_idx, (category, group) in enumerate(categories):
+                    with cols[col_idx % 2]:
+                        best_deal = group.nsmallest(1, "price").iloc[0]
+
+                        category_emoji = {
+                            "cpu": "🖥️",
+                            "gpu": "🎮",
+                            "motherboard": "⚡",
+                            "memory": "💾",
+                            "storage": "💿",
+                            "psu": "🔌",
+                            "cooler": "❄️",
+                            "case": "📦",
+                            "cruise": "🚢"
+                        }.get(category, "📦")
+
+                        with st.container():
+                            st.markdown(f"**{category_emoji} {category.upper()}**")
+                            st.markdown(f"{best_deal['product_name']}")
+                            st.caption(f"🏪 {best_deal['store'].upper()} • R$ {best_deal['price']:.2f}")
+                            st.link_button("Ver Oferta", best_deal["url"], use_container_width=True)
+                            st.markdown("---")
 
             with view_tab2:
-                # Exibir em cards
-                for idx, row in latest_df.iterrows():
-                    with st.container():
-                        col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+                st.subheader("📚 Catálogo Completo de Produtos")
+
+                # Filtros adicionais específicos para o catálogo
+                col_filter1, col_filter2, col_filter3 = st.columns(3)
+
+                with col_filter1:
+                    search_term = st.text_input("🔍 Buscar produto", placeholder="Digite o nome...")
+
+                with col_filter2:
+                    sort_by = st.selectbox(
+                        "Ordenar por",
+                        ["Menor preço", "Maior preço", "Nome (A-Z)", "Loja", "Última atualização"]
+                    )
+
+                with col_filter3:
+                    view_mode = st.radio("Visualização", ["Compacta", "Detalhada"], horizontal=True)
+
+                # Aplicar busca
+                filtered_df = latest_df.copy()
+                if search_term:
+                    filtered_df = filtered_df[
+                        filtered_df["product_name"].str.contains(search_term, case=False, na=False)
+                    ]
+
+                # Aplicar ordenação
+                if sort_by == "Menor preço":
+                    filtered_df = filtered_df.sort_values("price", ascending=True)
+                elif sort_by == "Maior preço":
+                    filtered_df = filtered_df.sort_values("price", ascending=False)
+                elif sort_by == "Nome (A-Z)":
+                    filtered_df = filtered_df.sort_values("product_name")
+                elif sort_by == "Loja":
+                    filtered_df = filtered_df.sort_values("store")
+                elif sort_by == "Última atualização":
+                    filtered_df = filtered_df.sort_values("timestamp", ascending=False)
+
+                st.caption(f"📊 Exibindo {len(filtered_df)} produtos")
+
+                if view_mode == "Compacta":
+                    # Visualização em tabela compacta
+                    display_df = filtered_df[[
+                        "product_name",
+                        "store",
+                        "price",
+                        "tendencia",
+                        "status",
+                        "url",
+                    ]].copy()
+
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "product_name": st.column_config.TextColumn("Produto", width="large"),
+                            "store": st.column_config.TextColumn("Loja", width="small"),
+                            "price": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
+                            "tendencia": st.column_config.TextColumn("Tendência", width="small"),
+                            "status": st.column_config.TextColumn("Status", width="medium"),
+                            "url": st.column_config.LinkColumn("Ver", width="small"),
+                        }
+                    )
+                else:
+                    # Visualização detalhada em cards (mas mais compacta que antes)
+                    for idx, row in filtered_df.iterrows():
+                        col1, col2, col3, col4 = st.columns([3, 1.5, 1.5, 1])
 
                         with col1:
                             st.markdown(f"**{row['product_name']}**")
-                            st.caption(f"🏪 {row['store'].upper()}")
+                            st.caption(f"🏪 {row['store'].upper()} • {row['category']}")
 
                         with col2:
                             if pd.notna(row['price']):
-                                st.metric("Preço Atual", f"R$ {row['price']:.2f}")
+                                st.metric("Preço", f"R$ {row['price']:.2f}", delta=None)
 
                         with col3:
                             st.write(row['tendencia'])
                             st.caption(row['status'])
 
                         with col4:
-                            st.link_button("🔗", row['url'], use_container_width=True)
+                            st.link_button("🔗 Ver", row['url'], use_container_width=True)
 
                         st.divider()
 
