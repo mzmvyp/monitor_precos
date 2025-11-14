@@ -242,12 +242,85 @@ class AlertManager:
             "reduction_percent": reduction_percent,
             "alert_sent": alert_sent,
         }])
-        
+
         if self.alert_history_path.exists():
             df = pd.read_csv(self.alert_history_path, encoding="utf-8")
             df = pd.concat([df, new_row], ignore_index=True)
         else:
             df = new_row
-        
+
         df.to_csv(self.alert_history_path, index=False, encoding="utf-8")
+
+    def alert_open_box(
+        self,
+        product_id: str,
+        product_name: str,
+        store: str,
+        product_url: str,
+        open_box_url: str,
+        regular_price: float,
+        open_box_price: Optional[float] = None,
+    ) -> bool:
+        """
+        Envia alerta quando detecta Open Box disponível.
+
+        Returns:
+            True se alerta foi enviado, False caso contrário
+        """
+        # Verificar cooldown para Open Box (usar store + "-openbox" como identificador único)
+        open_box_id = f"{product_id}-openbox"
+        if not self._can_send_alert(open_box_id, store):
+            LOGGER.info(f"⏳ Cooldown ativo para Open Box: {product_name} ({store})")
+            return False
+
+        # Preparar mensagem de Open Box
+        subject = f"📦 OPEN BOX DISPONÍVEL: {product_name}"
+
+        # Calcular economia se temos o preço do Open Box
+        economy_text = ""
+        if open_box_price:
+            economy = regular_price - open_box_price
+            economy_percent = (economy / regular_price) * 100
+            economy_text = f"""
+💰 PREÇO NORMAL: R$ {regular_price:.2f}
+📦 PREÇO OPEN BOX: R$ {open_box_price:.2f}
+💵 ECONOMIA: R$ {economy:.2f} ({economy_percent:.1f}%)
+"""
+
+        body = f"""🎯 OPEN BOX DETECTADO!
+
+Produto: {product_name}
+Loja: {store.upper()}
+{economy_text}
+ℹ️ Open Box = Produto com caixa aberta, devolução ou mostruário
+   Funciona perfeitamente, mas pode ter sinais de uso
+
+🔗 VER OPEN BOX:
+{open_box_url}
+
+🔗 PRODUTO NORMAL:
+{product_url}
+
+⏰ Alerta enviado em: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+
+---
+Monitor de Preços Automático
+Aproveite essa oportunidade! 📦✨
+"""
+
+        # Enviar email
+        alert_sent = self._send_email(subject, body)
+
+        # Registrar no histórico (usando formato especial para Open Box)
+        self._log_alert(
+            product_id=open_box_id,
+            product_name=f"{product_name} (Open Box)",
+            store=store,
+            current_price=open_box_price or 0.0,
+            previous_price=regular_price,
+            reduction_percent=((regular_price - open_box_price) / regular_price * 100) if open_box_price else 0.0,
+            alert_sent=alert_sent,
+        )
+
+        return alert_sent
 

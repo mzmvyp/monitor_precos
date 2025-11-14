@@ -112,6 +112,7 @@ class PriceMonitor:
                                 in_stock=None,
                                 fetched_at=datetime.now(timezone.utc),
                                 error=None,
+                                metadata={},
                             )
                         )
                         continue
@@ -145,21 +146,39 @@ class PriceMonitor:
                             time.sleep(wait_time)
                             continue
                         
-                        snapshots.append(
-                            PriceSnapshot(
-                                product_id=product.id,
-                                product_name=product.name,
-                                category=product.category,
-                                store=snapshot.store,
-                                url=product_url.url,
-                                price=snapshot.price,
-                                raw_price=snapshot.raw_price,
-                                currency=snapshot.currency,
-                                in_stock=snapshot.in_stock,
-                                fetched_at=snapshot.fetched_at,
-                                error=snapshot.error,
-                            )
+                        new_snapshot = PriceSnapshot(
+                            product_id=product.id,
+                            product_name=product.name,
+                            category=product.category,
+                            store=snapshot.store,
+                            url=product_url.url,
+                            price=snapshot.price,
+                            raw_price=snapshot.raw_price,
+                            currency=snapshot.currency,
+                            in_stock=snapshot.in_stock,
+                            fetched_at=snapshot.fetched_at,
+                            error=snapshot.error,
+                            metadata=snapshot.metadata,
                         )
+                        snapshots.append(new_snapshot)
+
+                        # Verificar se há Open Box disponível
+                        if (self.alert_manager and
+                            snapshot.metadata.get("has_open_box") and
+                            snapshot.price):
+                            open_box_url = snapshot.metadata.get("open_box_url")
+                            open_box_price = snapshot.metadata.get("open_box_price")
+
+                            if open_box_url:
+                                self.alert_manager.alert_open_box(
+                                    product_id=product.id,
+                                    product_name=product.name,
+                                    store=snapshot.store,
+                                    product_url=product_url.url,
+                                    open_box_url=open_box_url,
+                                    regular_price=snapshot.price,
+                                    open_box_price=open_box_price,
+                                )
                         break  # Sucesso, sair do loop de retry
                         
                     except Exception as e:
@@ -185,6 +204,7 @@ class PriceMonitor:
                                     in_stock=None,
                                     fetched_at=datetime.now(timezone.utc),
                                     error=str(e),
+                                    metadata={},
                                 )
                             )
 

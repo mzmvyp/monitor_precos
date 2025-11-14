@@ -24,16 +24,12 @@ items:
     url: https://www.pichau.com.br/processador-amd-ryzen-7-7700-8-core-16-threads-3-8ghz-5-3ghz-turbo-cache-40mb-am5-100-100000592box
   - store: kabum
     url: https://www.kabum.com.br/produto/378414/processador-amd-ryzen-7-7700-4-5ghz-max-turbo-cache-40mb-am5-8-nucleos-video-integrado-100-100000592box
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/22267/processador-amd-ryzen-7-7700-38ghz-53ghz-turbo-8-cores-16-threads-am5-com-cooler-100-100000592box
   enabled: true
 - id: cpu-ryzen-7-7700x
   name: Processador AMD Ryzen 7 7700X
   category: cpu
   desired_price: 1500.0
   urls:
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/22264/processador-amd-ryzen-7-7700x-45ghz-54ghz-turbo-8-cores-16-threads-am5-100-100000591wof
   - store: pichau
     url: https://www.pichau.com.br/processador-amd-ryzen-7-7700x-8-core-16-threads-4-5ghz-5-4ghz-turbo-cache-40mb-am5-100-100000591wof
   enabled: true
@@ -46,16 +42,12 @@ items:
     url: https://www.pichau.com.br/processador-amd-ryzen-5-7600x-6-core-12-threads-4-7ghz-5-3ghz-turbo-cache-38mb-am5-100-100000593wof
   - store: kabum
     url: https://www.kabum.com.br/produto/378415/processador-amd-ryzen-5-7600x-5-3ghz-max-turbo-cache-38mb-am5-6-nucleos-100-100000593wof
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/22268/processador-amd-ryzen-5-7600x-47ghz-53ghz-turbo-6-cores-12-threads-am5-100-100000593wof
   enabled: true
 - id: cpu-ryzen-7-8700f
   name: Processador AMD Ryzen 7 8700F
   category: cpu
   desired_price: 1300.0
   urls:
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/28769/processador-amd-ryzen-7-8700f-41ghz-50ghz-turbo-8-cores-16-threads-am5-com-cooler-amd-wraith-stealth-100-100001590box
   - store: kabum
     url: https://www.kabum.com.br/produto/571928/processador-amd-ryzen-7-8700f-4-1-ghz-5-0-ghz-max-turbo-cache-24mb-8-nucleos-16-threads-am5-100-100001590box
   - store: pichau
@@ -72,8 +64,6 @@ items:
     url: https://www.amazon.com.br/Processador-AMD-7900X-Threads-Graphics/dp/B0BBJ59WJ4/ref=sr_1_2?__mk_pt_BR=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=1ILPQ6MNXLTTW&dib=eyJ2IjoiMSJ9.iFqqjClM4iGKJfLuEBuNM3ubCOTXQ63pxQ8ZZRWaggaTzWdqVzUUqlF-bEo_JSZXMY5jgfYalc4NjWDbJ-956zAdXRpCfPOCvM91nacX_uWfC2tISbCaFqbPUaLPsAm8G2_nBakfq4tQrUxQiXiEo4h7aaUqlaBXITx5GcjkZDTjpP1Zmq9YbMhG1rts8WHi1Sd4i4gnUDelZtC-VMelLsq9rXq5w3vOQu2aSpe4v6HDHFNqrlAYM_ecbE_oubXxwltqOG9vNMicjuaAx_SxcglFvXg3wOtmN8hCogRRN9Q.qHrd3h3G2NnymmFHIhx7PyEhMnW6-rkfmpFSgg7_Deo&dib_tag=se&keywords=7900x+processador&qid=1762999743&s=computers&sprefix=7900x+processado%2Ccomputers%2C190&sr=1-2&ufe=app_do%3Aamzn1.fos.25548f35-0de7-44b3-b28e-0f56f3f96147
   - store: pichau
     url: https://www.pichau.com.br/processador-amd-ryzen-9-7900x-12-core-24-threads-4-7ghz-5-6ghz-turbo-cache-76mb-am5-100-100000589wof
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/22266/processador-amd-ryzen-9-7900x-47ghz-56ghz-turbo-12-cores-24-threads-am5-100-100000589wof
   enabled: true
 - id: cpu-ryzen-7-9700x
   name: Processador AMD Ryzen 7 9700X
@@ -86,8 +76,6 @@ items:
     url: https://www.amazon.com.br/PROCESSADOR-AM5-RYZEN-7-9700X/dp/B0D6NMDNNX/ref=sr_1_1?dib=eyJ2IjoiMSJ9.vS_3StjYCcMkwGjmisVl4qjTrKmCQ2p_xkR0I_W2UISTzWdqVzUUqlF-bEo_JSZXlfRP3LQv7busbn6iAzrtFj4aNTcbDpmlYuvPaFgDEjo9evi5ewnh40yK-V6NwPCTkpBaXNCQ0dT2dKs2Yjl6ywDqpIOtW0UJGkf0Bx9Itb9RODkqZ76B5xWw733gi8ohVN3exzVKo4UM0AdTcrTr7lYnY-kiisHI6KC93RT80EYDQRg3YELWyn2cNzwV6d5-7wPI5d6R12Y4dvvLlUxGHOiZM26B4yd-nKepSYmATmw.jvi9rSYYV_HuCQb6J6Rk04z3JALQmMwi4Odn6OEIZGM&dib_tag=se&keywords=9700x&qid=1762999826&sr=8-1&ufe=app_do%3Aamzn1.fos.25548f35-0de7-44b3-b28e-0f56f3f96147
   - store: pichau
     url: https://www.pichau.com.br/processador-amd-ryzen-7-9700x-8-core-16-threads-3-8ghz-5-5ghz-turbo-cache-40mb-am5-100-100001404wof
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/30039/processador-amd-ryzen-7-9700x-38ghz-55ghz-turbo-8-cores-16-threads-am5-sem-cooler-100-100001404wof
   enabled: true
 - id: motherboard-asus-tuf-b650m-e
   name: Placa-Mãe ASUS TUF Gaming B650M-E WiFi
@@ -108,8 +96,6 @@ items:
     url: https://www.kabum.com.br/produto/378413/placa-mae-gigabyte-b650-aorus-elite-ax-amd-am5-ddr5-atx-chipset-b650
   - store: amazon
     url: https://www.amazon.com.br/Gigabyte-B650-AORUS-ELITE-Motherboard/dp/B0BH6XND27
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/23253/placa-mae-gigabyte-b650m-aorus-elite-ax-chipset-b650-amd-am5-matx-ddr5
   enabled: true
 - id: motherboard-gigabyte-b650m-ds3h
   name: Placa-Mãe Gigabyte B650M DS3H
@@ -120,8 +106,6 @@ items:
     url: https://www.kabum.com.br/produto/378416/placa-mae-gigabyte-b650m-ds3h-amd-am5-micro-atx-ddr5-chipset-amd-b650
   - store: pichau
     url: https://www.pichau.com.br/placa-mae-gigabyte-b650m-ds3h-ddr5-socket-am5-matx-chipset-amd-b650
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/23257/placa-mae-gigabyte-b650m-ds3h-chipset-b650-amd-am5-matx-ddr5
   enabled: true
 - id: motherboard-msi-b650-tomahawk-wifi
   name: Placa-Mãe MSI MAG B650 Tomahawk WiFi
@@ -134,8 +118,6 @@ items:
     url: https://www.amazon.com.br/MSI-Placa-m%C3%A3e-B650-Tomahawk-processadores/dp/B0BHCCNSRH/ref=sr_1_1?dib=eyJ2IjoiMSJ9.r4O8SYdGQPhL3ubXkuAw047IPxE7YyzeSRYo03c5dXlKZ7wnSe_C0eN7dA3ZDaztbaUiHK2SsXqMtltNKKNJobVOEnWuRPiO-kqUeHFVnl24o0rakUJkfRCvDKwm_u7A1qyYe0GrkkMiZC-F8IUUJPt3ON0KA4MliBIWFBmE6ggS3OUvv24LeqE_tWfK65lD3rTule6scvekzQUMmORQY5YB5ZGug2YBUvF3o9a2Y4W3PsheuLF49ac_E7bGJPxPVKqO4l03GO8wPA44uBGk3woeOBcPENvd5XMj4Aju8Eg._SFpxK4mUBS2D3ZGNbSWlScE6ooqP3W594hSx9Exqyc&dib_tag=se&keywords=MSI+MAG+B650+Tomahawk+WiFi&qid=1763000392&sr=8-1&ufe=app_do%3Aamzn1.fos.25548f35-0de7-44b3-b28e-0f56f3f96147
   - store: pichau
     url: https://www.pichau.com.br/placa-mae-msi-mag-b650-tomahawk-wifi-ddr5-socket-am5-atx-chipset-amd-b650
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/23256/placa-mae-msi-mag-b650-tomahawk-wifi-chipset-b650-amd-am5-atx-ddr5
   enabled: true
 - id: ssd-kingston-kc3000
   name: SSD Kingston KC3000 1TB
@@ -156,8 +138,6 @@ items:
     url: https://www.kabum.com.br/produto/526516/memoria-ram-xpg-lancer-rgb-32gb-2x16gb-6000mhz-ddr5-cl30-preto-ax5u6000c3016g-dclarbk
   - store: pichau
     url: https://www.pichau.com.br/memoria-xpg-lancer-rgb-32gb-2x16gb-ddr5-6000mhz-cl30-preto-ax5u6000c3016g-dclarbk
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/24321/memoria-ddr5-xpg-lancer-rgb-32gb-2x16gb-6000mhz-preta-ax5u6000c3016g-dclarbk
   enabled: true
 - id: memory-kingston-fury-32gb
   name: Memória Kingston Fury Beast EXPO 32GB DDR5 6000MHz
@@ -166,8 +146,6 @@ items:
   urls:
   - store: kabum
     url: https://www.kabum.com.br/produto/616568/memoria-ram-kingston-fury-beast-expo-32gb-2x16gb-6000mt-s-ddr5-dimm-cl30-preto-kf560c30bbek2-32
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/24318/memoria-ddr5-kingston-fury-beast-expo-32gb-6000mhz-black-kf560c36bbe-32
   enabled: true
 - id: cooler-rise-mode-aura-ice
   name: Water Cooler Rise Mode Aura Ice Black 240mm
@@ -206,8 +184,6 @@ items:
   category: psu
   desired_price: 550.0
   urls:
-  - store: terabyte
-    url: https://www.terabyteshop.com.br/produto/26488/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-black-gx850pbkps18810br
   - store: pichau
     url: https://www.pichau.com.br/fonte-gamemax-gx850-pro-850w-80-plus-gold-full-modular-pfc-ativo-preto-gx850pbkps18810br
   - store: kabum

@@ -260,6 +260,7 @@ class SeleniumScraper(abc.ABC):
                 in_stock=metadata.get("in_stock"),
                 fetched_at=datetime.now(timezone.utc),
                 error=None,
+                metadata=metadata,
             )
         except Exception as exc:
             LOGGER.exception("Erro ao coletar %s (%s)", url, self.store)
@@ -275,6 +276,7 @@ class SeleniumScraper(abc.ABC):
                 in_stock=None,
                 fetched_at=datetime.now(timezone.utc),
                 error=str(exc),
+                metadata={},
             )
     
     def _get_html(self, ctx: ScraperContext) -> str:
