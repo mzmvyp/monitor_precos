@@ -44,10 +44,20 @@ class SeleniumScraper(abc.ABC):
     def _init_driver(self) -> None:
         """Inicializa o Chrome driver com opções anti-detecção."""
         try:
+            # Carregar .env se existir
+            from pathlib import Path
+            env_file = Path(".env")
+            if env_file.exists():
+                for line in env_file.read_text(encoding="utf-8").split("\n"):
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
+                        os.environ[key.strip()] = value.strip()
+
             # Suprimir avisos do Selenium
             import warnings
             warnings.filterwarnings("ignore")
-            
+
             # Suprimir logs do TensorFlow Lite e outros
             os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
             os.environ['GRPC_VERBOSITY'] = 'ERROR'
@@ -108,25 +118,36 @@ class SeleniumScraper(abc.ABC):
             # Inicializar driver
             import sys
             from pathlib import Path
-            
+
             # Verificar se há ChromeDriver manual instalado
-            manual_chromedriver = Path.home() / ".chromedriver" / "chromedriver-win64" / "chromedriver.exe"
             env_chromedriver = os.getenv("CHROMEDRIVER_PATH")
-            
+
+            # Procurar ChromeDriver em locais comuns
+            exe_name = "chromedriver.exe" if os.name == "nt" else "chromedriver"
+            manual_locations = [
+                Path.home() / ".chromedriver" / exe_name,
+                Path.home() / ".chromedriver" / "chromedriver-win64" / "chromedriver.exe",
+                Path.home() / ".chromedriver" / "chromedriver-linux64" / "chromedriver",
+                Path.home() / ".chromedriver" / "chromedriver-mac-x64" / "chromedriver",
+            ]
+
             driver_path = None
-            
+
             # Prioridade 1: Variável de ambiente
             if env_chromedriver and os.path.exists(env_chromedriver):
                 driver_path = env_chromedriver
                 LOGGER.info(f"Usando ChromeDriver de CHROMEDRIVER_PATH: {driver_path}")
-            
+
             # Prioridade 2: Instalação manual
-            elif manual_chromedriver.exists():
-                driver_path = str(manual_chromedriver)
-                LOGGER.info(f"Usando ChromeDriver manual: {driver_path}")
-            
+            if not driver_path:
+                for location in manual_locations:
+                    if location.exists():
+                        driver_path = str(location)
+                        LOGGER.info(f"Usando ChromeDriver manual: {driver_path}")
+                        break
+
             # Prioridade 3: webdriver-manager (pode falhar com win32)
-            else:
+            if not driver_path:
                 try:
                     LOGGER.info("Tentando usar webdriver-manager...")
                     driver_path = ChromeDriverManager().install()
