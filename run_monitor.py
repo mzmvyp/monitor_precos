@@ -123,13 +123,13 @@ def start_streamlit(port: int) -> subprocess.Popen:
         "-m",
         "streamlit",
         "run",
-        "streamlit_app.py",
+        "streamlit_app_premium.py",  # Usando versão Premium
         "--server.port",
         str(port),
         "--server.headless",
         "true",
     ]
-    LOGGER.info("Iniciando Streamlit: %s", " ".join(cmd))
+    LOGGER.info("Iniciando Streamlit (Premium): %s", " ".join(cmd))
     return subprocess.Popen(cmd)
 
 

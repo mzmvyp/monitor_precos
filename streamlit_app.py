@@ -95,9 +95,51 @@ with tab1:
         )
 
     def refresh_prices(selected_ids: list[str] | None = None):
-        with st.spinner("Coletando preços atualizados..."):
-            snapshots = monitor.collect(product_ids=selected_ids)
-        st.success(f"Coleta finalizada com {len(snapshots)} registros.")
+        try:
+            with st.spinner("Coletando preços atualizados... Isso pode levar alguns minutos."):
+                snapshots = monitor.collect(product_ids=selected_ids)
+
+            if snapshots:
+                st.success(f"✅ Coleta finalizada: {len(snapshots)} registros coletados!")
+            else:
+                st.warning("⚠️ Nenhum preço foi coletado. Verifique os logs.")
+
+        except RuntimeError as e:
+            error_msg = str(e)
+
+            if "ChromeDriver" in error_msg or "Chrome binary" in error_msg:
+                st.error("❌ **Erro: ChromeDriver não instalado!**")
+                st.markdown("""
+                ### 🔧 Como Resolver:
+
+                **Passo 1:** Abra um novo terminal (PowerShell/CMD)
+
+                **Passo 2:** Execute:
+                ```
+                python instalar_chromedriver_manual.py
+                ```
+
+                **Passo 3:** Feche este dashboard (Ctrl+C)
+
+                **Passo 4:** Abra um NOVO terminal e execute:
+                ```
+                streamlit run streamlit_app.py
+                ```
+
+                **Passo 5:** Tente atualizar preços novamente
+
+                ---
+
+                📖 **Guia completo:** Veja o arquivo `INSTALACAO_WINDOWS.md`
+                """)
+            else:
+                st.error(f"❌ Erro ao coletar preços: {error_msg}")
+
+        except Exception as e:
+            st.error(f"❌ Erro inesperado: {str(e)}")
+            with st.expander("📋 Detalhes do erro"):
+                import traceback
+                st.code(traceback.format_exc())
 
     with st.sidebar:
         st.header("Configurações")
@@ -237,7 +279,7 @@ with tab1:
 
         st.dataframe(
             display_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "product_name": st.column_config.TextColumn(
@@ -283,7 +325,7 @@ with tab1:
                 with col2:
                     st.write(f"R$ {row['price']:.2f}")
                 with col3:
-                    st.link_button("🔗 Abrir", row['url'], use_container_width=True)
+                    st.link_button("🔗 Abrir", row['url'], width="stretch")
 
         # Gráfico de variação percentual - Últimas 24h
         st.subheader("📊 Variação Percentual - Últimas 24h")
@@ -322,7 +364,7 @@ with tab1:
 
                 # Tabela com detalhes
                 with st.expander("📋 Ver detalhes das variações"):
-                    st.dataframe(var_df, use_container_width=True, hide_index=True)
+                    st.dataframe(var_df, width="stretch", hide_index=True)
             else:
                 st.info("Não há dados suficientes para calcular variações nas últimas 24h")
         else:
@@ -691,7 +733,7 @@ with tab3:
 
                 st.dataframe(
                     display_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "airline": st.column_config.TextColumn("Companhia", width="medium"),

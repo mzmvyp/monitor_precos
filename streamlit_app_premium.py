@@ -348,6 +348,38 @@ with tab1:
 
     st.markdown("---")
 
+    # Banner de Atualização de Dados
+    if not history_df.empty:
+        last_update = history_df["timestamp"].max()
+        time_since_update = datetime.now(timezone.utc) - last_update
+        hours_since = time_since_update.total_seconds() / 3600
+
+        if hours_since > 24:
+            # Dados muito antigos (>24h)
+            st.error(f"""
+            ⚠️ **ATENÇÃO: Dados desatualizados!**
+
+            Última atualização: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+
+            Os preços exibidos podem não refletir os valores atuais dos sites.
+
+            👉 **Clique em "🔄 Atualizar Preços" na barra lateral para coletar preços atuais!**
+            """)
+        elif hours_since > 6:
+            # Dados um pouco antigos (6-24h)
+            st.warning(f"""
+            ⏰ Última atualização: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+
+            💡 Considere atualizar os preços para ver as ofertas mais recentes!
+            """)
+        else:
+            # Dados recentes (<6h)
+            st.info(f"""
+            ✅ Dados atualizados: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+            """)
+
+    st.markdown("---")
+
     # Banner de Notificações/Alertas
     if recent_alerts:
         st.markdown("### 🔔 **Alertas Ativos**")
@@ -415,12 +447,55 @@ with tab1:
             options=list(product_options.keys()),
         )
 
-        if st.button("🔄 Atualizar Preços", type="primary", use_container_width=True):
+        if st.button("🔄 Atualizar Preços", type="primary", width="stretch"):
             ids = [product_options[name] for name in selected_products] if selected_products else None
-            with st.spinner("Coletando preços atualizados..."):
-                snapshots = monitor.collect(product_ids=ids)
-            st.success(f"✅ Coleta finalizada: {len(snapshots)} registros")
-            st.rerun()
+
+            try:
+                with st.spinner("Coletando preços atualizados... Isso pode levar alguns minutos."):
+                    snapshots = monitor.collect(product_ids=ids)
+
+                if snapshots:
+                    st.success(f"✅ Coleta finalizada: {len(snapshots)} registros coletados!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Nenhum preço foi coletado. Verifique os logs acima.")
+
+            except RuntimeError as e:
+                error_msg = str(e)
+
+                if "ChromeDriver" in error_msg or "Chrome binary" in error_msg:
+                    st.error("❌ **Erro: ChromeDriver não instalado!**")
+                    st.markdown("""
+                    ### 🔧 Como Resolver:
+
+                    **Passo 1:** Abra um novo terminal (PowerShell/CMD)
+
+                    **Passo 2:** Execute:
+                    ```
+                    python instalar_chromedriver_manual.py
+                    ```
+
+                    **Passo 3:** Feche este dashboard (Ctrl+C)
+
+                    **Passo 4:** Abra um NOVO terminal e execute:
+                    ```
+                    streamlit run streamlit_app_premium.py
+                    ```
+
+                    **Passo 5:** Clique em "Atualizar Preços" novamente
+
+                    ---
+
+                    📖 **Guia completo:** Veja o arquivo `INSTALACAO_WINDOWS.md`
+                    """)
+                else:
+                    st.error(f"❌ Erro ao coletar preços: {error_msg}")
+
+            except Exception as e:
+                st.error(f"❌ Erro inesperado: {str(e)}")
+                with st.expander("📋 Detalhes do erro"):
+                    import traceback
+                    st.code(traceback.format_exc())
 
         st.markdown("---")
 
@@ -587,7 +662,7 @@ with tab1:
                                     height=400
                                 )
 
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width="stretch")
                             except ImportError:
                                 st.info("📊 Instale plotly para ver gráficos interativos: `pip install plotly`")
                         else:
@@ -678,7 +753,7 @@ with tab1:
                                 st.metric("Meta", f"R$ {product.desired_price:.2f}")
                             with col4:
                                 st.metric("Economia", f"R$ {savings:.2f}", delta=f"-{savings_percent:.1f}%")
-                                st.link_button("🛒 Ver Oferta", row["url"], use_container_width=True)
+                                st.link_button("🛒 Ver Oferta", row["url"], width="stretch")
                     st.markdown("---")
                 else:
                     st.info("📭 Nenhum produto atingiu o preço desejado ainda. Continue monitorando!")
@@ -702,7 +777,7 @@ with tab1:
                         with col2:
                             st.metric("Preço", f"R$ {row['price']:.2f}")
                         with col3:
-                            st.link_button("🛒 Ver", row["url"], use_container_width=True)
+                            st.link_button("🛒 Ver", row["url"], width="stretch")
                     st.markdown("---")
 
                 # Seção 3: Top ofertas por categoria
@@ -733,7 +808,7 @@ with tab1:
                             st.markdown(f"**{category_emoji} {category.upper()}**")
                             st.markdown(f"{best_deal['product_name']}")
                             st.caption(f"🏪 {best_deal['store'].upper()} • R$ {best_deal['price']:.2f}")
-                            st.link_button("Ver Oferta", best_deal["url"], use_container_width=True)
+                            st.link_button("Ver Oferta", best_deal["url"], width="stretch")
                             st.markdown("---")
 
             with view_tab2:
@@ -788,7 +863,7 @@ with tab1:
 
                     st.dataframe(
                         display_df,
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                         column_config={
                             "product_name": st.column_config.TextColumn("Produto", width="large"),
@@ -817,7 +892,7 @@ with tab1:
                             st.caption(row['status'])
 
                         with col4:
-                            st.link_button("🔗 Ver", row['url'], use_container_width=True)
+                            st.link_button("🔗 Ver", row['url'], width="stretch")
 
                         st.divider()
 
@@ -864,7 +939,7 @@ with tab1:
                 # Top 10 menores preços
                 if not latest_df.empty:
                     top_10 = latest_df.nsmallest(10, 'price')[['product_name', 'store', 'price']]
-                    st.dataframe(top_10, use_container_width=True, hide_index=True)
+                    st.dataframe(top_10, width="stretch", hide_index=True)
 
             with chart_tab3:
                 # Distribuição por categoria
@@ -872,7 +947,7 @@ with tab1:
                     category_stats = latest_df.groupby('category').agg({
                         'price': ['mean', 'min', 'max', 'count']
                     }).round(2)
-                    st.dataframe(category_stats, use_container_width=True)
+                    st.dataframe(category_stats, width="stretch")
 
 # ============================================================
 # ABA 2: GERENCIAMENTO
@@ -1132,7 +1207,7 @@ with tab2:
 
             export_format = st.radio("Formato", ["CSV", "JSON"])
 
-            if st.button("📥 Gerar Arquivo", type="primary", use_container_width=True):
+            if st.button("📥 Gerar Arquivo", type="primary", width="stretch"):
                 if export_format == "CSV":
                     data = export_to_csv(config)
                     st.download_button(
@@ -1140,7 +1215,7 @@ with tab2:
                         data=data,
                         file_name=f"produtos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width="stretch"
                     )
                 else:
                     data = export_to_json(config)
@@ -1149,7 +1224,7 @@ with tab2:
                         data=data,
                         file_name=f"produtos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                         mime="application/json",
-                        use_container_width=True
+                        width="stretch"
                     )
 
         with col2:
@@ -1167,7 +1242,7 @@ with tab2:
                 help="Se marcado, TODOS os produtos atuais serão removidos"
             )
 
-            if uploaded_file and st.button("📤 Importar", type="secondary", use_container_width=True):
+            if uploaded_file and st.button("📤 Importar", type="secondary", width="stretch"):
                 try:
                     content = uploaded_file.read().decode('utf-8')
 
@@ -1202,7 +1277,7 @@ with tab2:
             data=template_csv,
             file_name="template_produtos.csv",
             mime="text/csv",
-            use_container_width=False
+            width="content"
         )
 
 # ============================================================
@@ -1272,7 +1347,7 @@ with tab3:
 
         st.dataframe(
             below_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 'name': st.column_config.TextColumn('Produto'),
@@ -1368,7 +1443,7 @@ with tab3:
             with alert_tab2:
                 st.dataframe(
                     alerts_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         'produto': st.column_config.TextColumn('Produto', width="large"),
@@ -1450,7 +1525,7 @@ with tab4:
 
                 st.dataframe(
                     display_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "airline": st.column_config.TextColumn("Companhia"),

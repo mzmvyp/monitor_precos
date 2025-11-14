@@ -1,15 +1,18 @@
 @echo off
 chcp 65001 >nul
-REM Monitor de Preços - Black Friday
-REM Executa coleta a cada 1 hora e abre dashboard no navegador
+REM Monitor de Preços - Professional Edition
+REM Executa coleta a cada 1 hora e abre dashboard Premium no navegador
 
 echo ========================================
-echo  Monitor de Precos - Black Friday
+echo  Monitor de Precos - Premium Edition
 echo ========================================
 echo.
 echo Iniciando sistema...
 echo - Coleta automatica a cada 1 hora
-echo - Dashboard em http://localhost:8501
+echo - Dashboard Premium em http://localhost:8501
+echo - Estatisticas avancadas
+echo - Import/Export CSV/JSON
+echo - Alertas por email
 echo.
 echo Pressione Ctrl+C para encerrar
 echo ========================================
