@@ -7,6 +7,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
@@ -354,12 +355,16 @@ with tab1:
         time_since_update = datetime.now(timezone.utc) - last_update
         hours_since = time_since_update.total_seconds() / 3600
 
+        # Converter para timezone de Brasília (UTC-3)
+        brasilia_tz = ZoneInfo("America/Sao_Paulo")
+        last_update_brasilia = last_update.astimezone(brasilia_tz)
+
         if hours_since > 24:
             # Dados muito antigos (>24h)
             st.error(f"""
             ⚠️ **ATENÇÃO: Dados desatualizados!**
 
-            Última atualização: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+            Última atualização: **{last_update_brasilia.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
 
             Os preços exibidos podem não refletir os valores atuais dos sites.
 
@@ -368,14 +373,14 @@ with tab1:
         elif hours_since > 6:
             # Dados um pouco antigos (6-24h)
             st.warning(f"""
-            ⏰ Última atualização: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+            ⏰ Última atualização: **{last_update_brasilia.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
 
             💡 Considere atualizar os preços para ver as ofertas mais recentes!
             """)
         else:
             # Dados recentes (<6h)
             st.info(f"""
-            ✅ Dados atualizados: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+            ✅ Dados atualizados: **{last_update_brasilia.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
             """)
 
     st.markdown("---")
@@ -1214,19 +1219,21 @@ with tab2:
             if st.button("📥 Gerar Arquivo", type="primary", width="stretch"):
                 if export_format == "CSV":
                     data = export_to_csv(config)
+                    brasilia_now = datetime.now(ZoneInfo("America/Sao_Paulo"))
                     st.download_button(
                         label="⬇️ Download CSV",
                         data=data,
-                        file_name=f"produtos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        file_name=f"produtos_{brasilia_now.strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
                         width="stretch"
                     )
                 else:
                     data = export_to_json(config)
+                    brasilia_now = datetime.now(ZoneInfo("America/Sao_Paulo"))
                     st.download_button(
                         label="⬇️ Download JSON",
                         data=data,
-                        file_name=f"produtos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        file_name=f"produtos_{brasilia_now.strftime('%Y%m%d_%H%M%S')}.json",
                         mime="application/json",
                         width="stretch"
                     )

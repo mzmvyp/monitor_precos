@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import requests
 from selenium import webdriver
@@ -276,7 +277,7 @@ class FlightAgent:
                                 stops=stops,
                                 duration=duration,
                                 url=url,
-                                found_at=datetime.now()
+                                found_at=datetime.now(ZoneInfo("America/Sao_Paulo"))
                             )
                             flights.append(flight)
                             LOGGER.debug(f"Voo encontrado: {airline_pattern} - R$ {price_float}")
@@ -321,7 +322,7 @@ class FlightAgent:
                         stops=-1,
                         duration="N/A",
                         url=url,
-                        found_at=datetime.now()
+                        found_at=datetime.now(ZoneInfo("America/Sao_Paulo"))
                     ))
             
             return flights

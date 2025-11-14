@@ -8,6 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yaml
@@ -194,6 +195,7 @@ class AlertManager:
         )
         
         subject = subject_template.format(product_name=product_name)
+        brasilia_now = datetime.now(ZoneInfo("America/Sao_Paulo"))
         body = body_template.format(
             product_name=product_name,
             store=store.upper(),
@@ -202,7 +204,7 @@ class AlertManager:
             reduction_percent=f"{reduction_percent:.1f}",
             desired_price=f"{desired_price:.2f}" if desired_price else "N/A",
             url=url,
-            timestamp=datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            timestamp=brasilia_now.strftime("%d/%m/%Y %H:%M:%S"),
         )
         
         # Enviar email
@@ -287,6 +289,7 @@ class AlertManager:
 💵 ECONOMIA: R$ {economy:.2f} ({economy_percent:.1f}%)
 """
 
+        brasilia_now = datetime.now(ZoneInfo("America/Sao_Paulo"))
         body = f"""🎯 OPEN BOX DETECTADO!
 
 Produto: {product_name}
@@ -301,7 +304,7 @@ Loja: {store.upper()}
 🔗 PRODUTO NORMAL:
 {product_url}
 
-⏰ Alerta enviado em: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+⏰ Alerta enviado em: {brasilia_now.strftime("%d/%m/%Y %H:%M:%S")}
 
 ---
 Monitor de Preços Automático
