@@ -35,6 +35,7 @@ class PriceSnapshot:
     raw_price: Optional[str] = None
     error: Optional[str] = None
     target_price: Optional[float] = field(default=None, repr=False, compare=False)
+    metadata: dict = field(default_factory=dict)
 
     @property
     def is_below_target(self) -> Optional[bool]:
