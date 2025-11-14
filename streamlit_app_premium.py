@@ -348,6 +348,38 @@ with tab1:
 
     st.markdown("---")
 
+    # Banner de Atualização de Dados
+    if not history_df.empty:
+        last_update = history_df["timestamp"].max()
+        time_since_update = datetime.now(timezone.utc) - last_update
+        hours_since = time_since_update.total_seconds() / 3600
+
+        if hours_since > 24:
+            # Dados muito antigos (>24h)
+            st.error(f"""
+            ⚠️ **ATENÇÃO: Dados desatualizados!**
+
+            Última atualização: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+
+            Os preços exibidos podem não refletir os valores atuais dos sites.
+
+            👉 **Clique em "🔄 Atualizar Preços" na barra lateral para coletar preços atuais!**
+            """)
+        elif hours_since > 6:
+            # Dados um pouco antigos (6-24h)
+            st.warning(f"""
+            ⏰ Última atualização: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+
+            💡 Considere atualizar os preços para ver as ofertas mais recentes!
+            """)
+        else:
+            # Dados recentes (<6h)
+            st.info(f"""
+            ✅ Dados atualizados: **{last_update.strftime('%d/%m/%Y às %H:%M')}** (há **{int(hours_since)} horas**)
+            """)
+
+    st.markdown("---")
+
     # Banner de Notificações/Alertas
     if recent_alerts:
         st.markdown("### 🔔 **Alertas Ativos**")
@@ -417,10 +449,53 @@ with tab1:
 
         if st.button("🔄 Atualizar Preços", type="primary", use_container_width=True):
             ids = [product_options[name] for name in selected_products] if selected_products else None
-            with st.spinner("Coletando preços atualizados..."):
-                snapshots = monitor.collect(product_ids=ids)
-            st.success(f"✅ Coleta finalizada: {len(snapshots)} registros")
-            st.rerun()
+
+            try:
+                with st.spinner("Coletando preços atualizados... Isso pode levar alguns minutos."):
+                    snapshots = monitor.collect(product_ids=ids)
+
+                if snapshots:
+                    st.success(f"✅ Coleta finalizada: {len(snapshots)} registros coletados!")
+                    st.rerun()
+                else:
+                    st.warning("⚠️ Nenhum preço foi coletado. Verifique os logs acima.")
+
+            except RuntimeError as e:
+                error_msg = str(e)
+
+                if "ChromeDriver" in error_msg or "Chrome binary" in error_msg:
+                    st.error("❌ **Erro: ChromeDriver não instalado!**")
+                    st.markdown("""
+                    ### 🔧 Como Resolver:
+
+                    **Passo 1:** Abra um novo terminal (PowerShell/CMD)
+
+                    **Passo 2:** Execute:
+                    ```
+                    python instalar_chromedriver_manual.py
+                    ```
+
+                    **Passo 3:** Feche este dashboard (Ctrl+C)
+
+                    **Passo 4:** Abra um NOVO terminal e execute:
+                    ```
+                    streamlit run streamlit_app_premium.py
+                    ```
+
+                    **Passo 5:** Clique em "Atualizar Preços" novamente
+
+                    ---
+
+                    📖 **Guia completo:** Veja o arquivo `INSTALACAO_WINDOWS.md`
+                    """)
+                else:
+                    st.error(f"❌ Erro ao coletar preços: {error_msg}")
+
+            except Exception as e:
+                st.error(f"❌ Erro inesperado: {str(e)}")
+                with st.expander("📋 Detalhes do erro"):
+                    import traceback
+                    st.code(traceback.format_exc())
 
         st.markdown("---")
 

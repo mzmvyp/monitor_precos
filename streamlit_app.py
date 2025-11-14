@@ -95,9 +95,51 @@ with tab1:
         )
 
     def refresh_prices(selected_ids: list[str] | None = None):
-        with st.spinner("Coletando preços atualizados..."):
-            snapshots = monitor.collect(product_ids=selected_ids)
-        st.success(f"Coleta finalizada com {len(snapshots)} registros.")
+        try:
+            with st.spinner("Coletando preços atualizados... Isso pode levar alguns minutos."):
+                snapshots = monitor.collect(product_ids=selected_ids)
+
+            if snapshots:
+                st.success(f"✅ Coleta finalizada: {len(snapshots)} registros coletados!")
+            else:
+                st.warning("⚠️ Nenhum preço foi coletado. Verifique os logs.")
+
+        except RuntimeError as e:
+            error_msg = str(e)
+
+            if "ChromeDriver" in error_msg or "Chrome binary" in error_msg:
+                st.error("❌ **Erro: ChromeDriver não instalado!**")
+                st.markdown("""
+                ### 🔧 Como Resolver:
+
+                **Passo 1:** Abra um novo terminal (PowerShell/CMD)
+
+                **Passo 2:** Execute:
+                ```
+                python instalar_chromedriver_manual.py
+                ```
+
+                **Passo 3:** Feche este dashboard (Ctrl+C)
+
+                **Passo 4:** Abra um NOVO terminal e execute:
+                ```
+                streamlit run streamlit_app.py
+                ```
+
+                **Passo 5:** Tente atualizar preços novamente
+
+                ---
+
+                📖 **Guia completo:** Veja o arquivo `INSTALACAO_WINDOWS.md`
+                """)
+            else:
+                st.error(f"❌ Erro ao coletar preços: {error_msg}")
+
+        except Exception as e:
+            st.error(f"❌ Erro inesperado: {str(e)}")
+            with st.expander("📋 Detalhes do erro"):
+                import traceback
+                st.code(traceback.format_exc())
 
     with st.sidebar:
         st.header("Configurações")
