@@ -279,7 +279,7 @@ with tab1:
 
         st.dataframe(
             display_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 "product_name": st.column_config.TextColumn(
@@ -325,7 +325,7 @@ with tab1:
                 with col2:
                     st.write(f"R$ {row['price']:.2f}")
                 with col3:
-                    st.link_button("🔗 Abrir", row['url'], use_container_width=True)
+                    st.link_button("🔗 Abrir", row['url'], width="stretch")
 
         # Gráfico de variação percentual - Últimas 24h
         st.subheader("📊 Variação Percentual - Últimas 24h")
@@ -364,7 +364,7 @@ with tab1:
 
                 # Tabela com detalhes
                 with st.expander("📋 Ver detalhes das variações"):
-                    st.dataframe(var_df, use_container_width=True, hide_index=True)
+                    st.dataframe(var_df, width="stretch", hide_index=True)
             else:
                 st.info("Não há dados suficientes para calcular variações nas últimas 24h")
         else:
@@ -733,7 +733,7 @@ with tab3:
 
                 st.dataframe(
                     display_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "airline": st.column_config.TextColumn("Companhia", width="medium"),

@@ -447,7 +447,7 @@ with tab1:
             options=list(product_options.keys()),
         )
 
-        if st.button("🔄 Atualizar Preços", type="primary", use_container_width=True):
+        if st.button("🔄 Atualizar Preços", type="primary", width="stretch"):
             ids = [product_options[name] for name in selected_products] if selected_products else None
 
             try:
@@ -662,7 +662,7 @@ with tab1:
                                     height=400
                                 )
 
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width="stretch")
                             except ImportError:
                                 st.info("📊 Instale plotly para ver gráficos interativos: `pip install plotly`")
                         else:
@@ -753,7 +753,7 @@ with tab1:
                                 st.metric("Meta", f"R$ {product.desired_price:.2f}")
                             with col4:
                                 st.metric("Economia", f"R$ {savings:.2f}", delta=f"-{savings_percent:.1f}%")
-                                st.link_button("🛒 Ver Oferta", row["url"], use_container_width=True)
+                                st.link_button("🛒 Ver Oferta", row["url"], width="stretch")
                     st.markdown("---")
                 else:
                     st.info("📭 Nenhum produto atingiu o preço desejado ainda. Continue monitorando!")
@@ -777,7 +777,7 @@ with tab1:
                         with col2:
                             st.metric("Preço", f"R$ {row['price']:.2f}")
                         with col3:
-                            st.link_button("🛒 Ver", row["url"], use_container_width=True)
+                            st.link_button("🛒 Ver", row["url"], width="stretch")
                     st.markdown("---")
 
                 # Seção 3: Top ofertas por categoria
@@ -808,7 +808,7 @@ with tab1:
                             st.markdown(f"**{category_emoji} {category.upper()}**")
                             st.markdown(f"{best_deal['product_name']}")
                             st.caption(f"🏪 {best_deal['store'].upper()} • R$ {best_deal['price']:.2f}")
-                            st.link_button("Ver Oferta", best_deal["url"], use_container_width=True)
+                            st.link_button("Ver Oferta", best_deal["url"], width="stretch")
                             st.markdown("---")
 
             with view_tab2:
@@ -863,7 +863,7 @@ with tab1:
 
                     st.dataframe(
                         display_df,
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                         column_config={
                             "product_name": st.column_config.TextColumn("Produto", width="large"),
@@ -892,7 +892,7 @@ with tab1:
                             st.caption(row['status'])
 
                         with col4:
-                            st.link_button("🔗 Ver", row['url'], use_container_width=True)
+                            st.link_button("🔗 Ver", row['url'], width="stretch")
 
                         st.divider()
 
@@ -939,7 +939,7 @@ with tab1:
                 # Top 10 menores preços
                 if not latest_df.empty:
                     top_10 = latest_df.nsmallest(10, 'price')[['product_name', 'store', 'price']]
-                    st.dataframe(top_10, use_container_width=True, hide_index=True)
+                    st.dataframe(top_10, width="stretch", hide_index=True)
 
             with chart_tab3:
                 # Distribuição por categoria
@@ -947,7 +947,7 @@ with tab1:
                     category_stats = latest_df.groupby('category').agg({
                         'price': ['mean', 'min', 'max', 'count']
                     }).round(2)
-                    st.dataframe(category_stats, use_container_width=True)
+                    st.dataframe(category_stats, width="stretch")
 
 # ============================================================
 # ABA 2: GERENCIAMENTO
@@ -1207,7 +1207,7 @@ with tab2:
 
             export_format = st.radio("Formato", ["CSV", "JSON"])
 
-            if st.button("📥 Gerar Arquivo", type="primary", use_container_width=True):
+            if st.button("📥 Gerar Arquivo", type="primary", width="stretch"):
                 if export_format == "CSV":
                     data = export_to_csv(config)
                     st.download_button(
@@ -1215,7 +1215,7 @@ with tab2:
                         data=data,
                         file_name=f"produtos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
-                        use_container_width=True
+                        width="stretch"
                     )
                 else:
                     data = export_to_json(config)
@@ -1224,7 +1224,7 @@ with tab2:
                         data=data,
                         file_name=f"produtos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                         mime="application/json",
-                        use_container_width=True
+                        width="stretch"
                     )
 
         with col2:
@@ -1242,7 +1242,7 @@ with tab2:
                 help="Se marcado, TODOS os produtos atuais serão removidos"
             )
 
-            if uploaded_file and st.button("📤 Importar", type="secondary", use_container_width=True):
+            if uploaded_file and st.button("📤 Importar", type="secondary", width="stretch"):
                 try:
                     content = uploaded_file.read().decode('utf-8')
 
@@ -1277,7 +1277,7 @@ with tab2:
             data=template_csv,
             file_name="template_produtos.csv",
             mime="text/csv",
-            use_container_width=False
+            width="content"
         )
 
 # ============================================================
@@ -1347,7 +1347,7 @@ with tab3:
 
         st.dataframe(
             below_df,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             column_config={
                 'name': st.column_config.TextColumn('Produto'),
@@ -1443,7 +1443,7 @@ with tab3:
             with alert_tab2:
                 st.dataframe(
                     alerts_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         'produto': st.column_config.TextColumn('Produto', width="large"),
@@ -1525,7 +1525,7 @@ with tab4:
 
                 st.dataframe(
                     display_df,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "airline": st.column_config.TextColumn("Companhia"),
