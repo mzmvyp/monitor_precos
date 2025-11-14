@@ -662,7 +662,11 @@ with tab1:
                                     height=400
                                 )
 
-                                st.plotly_chart(fig, width="stretch")
+                                st.plotly_chart(
+                                    fig,
+                                    use_container_width=True,
+                                    config={'displayModeBar': True, 'displaylogo': False}
+                                )
                             except ImportError:
                                 st.info("📊 Instale plotly para ver gráficos interativos: `pip install plotly`")
                         else:
