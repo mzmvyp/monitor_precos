@@ -187,57 +187,73 @@ class FlightMonitor:
         return latest.sort_values("price")
     
     def _check_flight_alerts(self, flights: list[FlightOption]) -> None:
-        """Verifica e envia alertas para voos com preços reduzidos."""
+        """Verifica e envia alertas para voos com preços atrativos."""
         if not self.alert_manager or not flights:
             return
-        
-        # Carregar histórico de voos
-        if not self.history_path.exists():
-            return
-        
-        history = pd.read_csv(self.history_path, encoding="utf-8")
-        if history.empty:
-            return
-        
-        history["timestamp"] = pd.to_datetime(history["timestamp"])
-        
+
+        # Carregar histórico de voos (pode estar vazio se for primeira vez)
+        history = pd.DataFrame()
+        if self.history_path.exists():
+            history = pd.read_csv(self.history_path, encoding="utf-8")
+            if not history.empty:
+                history["timestamp"] = pd.to_datetime(history["timestamp"])
+
+        # Carregar configuração para pegar preço de alerta
+        config = self.load_config()
+
         for flight in flights:
-            # Buscar histórico deste voo específico
-            flight_history = history[
-                (history["flight_id"] == flight.flight_id) &
-                (history["origin"] == flight.origin) &
-                (history["destination"] == flight.destination) &
-                (history["departure_date"] == flight.departure_date) &
-                (history["return_date"] == flight.return_date) &
-                (history["airline"] == flight.airline)
-            ].sort_values("timestamp")
-            
-            if len(flight_history) < 2:
-                continue  # Precisa de pelo menos 2 registros para comparar
-            
-            previous_price = flight_history.iloc[-2]["price"]
-            
-            # Carregar configuração para pegar preço desejado
-            config = self.load_config()
             flight_config = next(
                 (f for f in config.get("flights", []) if f.get("id") == flight.flight_id),
                 None
             )
-            
-            desired_price = flight_config.get("alert_price") if flight_config else None
-            
-            # Verificar e enviar alerta
+
+            if not flight_config:
+                continue
+
+            alert_price = flight_config.get("alert_price")  # Ex: 5000.0
+
+            # Buscar histórico deste voo específico (mesma rota/data, qualquer airline)
+            flight_history = pd.DataFrame()
+            if not history.empty:
+                flight_history = history[
+                    (history["flight_id"] == flight.flight_id) &
+                    (history["origin"] == flight.origin) &
+                    (history["destination"] == flight.destination) &
+                    (history["departure_date"] == flight.departure_date) &
+                    (history["return_date"] == flight.return_date)
+                ].sort_values("timestamp")
+
             product_name = f"Voo {flight.origin} → {flight.destination} ({flight.departure_date})"
-            
-            self.alert_manager.check_and_alert(
-                product_id=f"flight-{flight.flight_id}-{flight.origin}-{flight.destination}",
-                product_name=product_name,
-                store=flight.airline,
-                url=flight.url,
-                current_price=flight.price,
-                previous_price=previous_price,
-                desired_price=desired_price,
-            )
+            product_id = f"flight-{flight.flight_id}-{flight.origin}-{flight.destination}-{flight.departure_date}"
+
+            # CASO 1: Voo já foi visto antes - comparar com preço anterior
+            if len(flight_history) >= 2:
+                previous_price = flight_history.iloc[-2]["price"]
+
+                self.alert_manager.check_and_alert(
+                    product_id=product_id,
+                    product_name=product_name,
+                    store=flight.airline,
+                    url=flight.url,
+                    current_price=flight.price,
+                    previous_price=previous_price,
+                    desired_price=alert_price,
+                )
+
+            # CASO 2: Primeira vez vendo este voo - alertar se preço for atrativo
+            elif alert_price and flight.price <= alert_price:
+                LOGGER.info(f"🎯 Voo atrativo encontrado: {product_name} - R$ {flight.price:.2f}")
+
+                # Enviar alerta de "voo atrativo encontrado"
+                self.alert_manager.check_and_alert(
+                    product_id=product_id,
+                    product_name=f"{product_name} [NOVA OFERTA]",
+                    store=flight.airline,
+                    url=flight.url,
+                    current_price=flight.price,
+                    previous_price=alert_price + 1.0,  # Simular "preço anterior" maior para disparar alerta
+                    desired_price=alert_price,
+                )
     
     def close(self):
         """Fecha o agent."""
