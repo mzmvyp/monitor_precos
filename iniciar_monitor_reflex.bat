@@ -12,7 +12,7 @@ echo [1/3] Verificando instalacao do Reflex...
 python -c "import reflex" 2>nul
 if %errorlevel% neq 0 (
     echo [AVISO] Reflex nao instalado. Instalando...
-    pip install reflex>=0.4.0
+    pip install -q reflex>=0.4.0
     echo [OK] Reflex instalado com sucesso!
 ) else (
     echo [OK] Reflex ja instalado
@@ -34,6 +34,6 @@ echo.
 echo Pressione Ctrl+C para encerrar
 echo.
 
-reflex run
+python -m reflex run
 
 pause
