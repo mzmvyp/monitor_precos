@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Monitor de Preços{% endblock %}
+
+{% block content %}
+<div x-data="dashboardData()" x-init="init()">
+
+    <!-- Título -->
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-2">📊 Dashboard de Preços</h2>
+        <p class="text-gray-600">Visão geral do monitoramento de preços</p>
+    </div>
+
+    <!-- Métricas Principais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Produtos Ativos -->
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all fade-in">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Produtos Ativos</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ stats.active_products }}</p>
+                </div>
+                <div class="text-4xl">📦</div>
+            </div>
+        </div>
+
+        <!-- Total de URLs -->
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all fade-in">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Total de URLs</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ stats.total_urls }}</p>
+                </div>
+                <div class="text-4xl">🏪</div>
+            </div>
+        </div>
+
+        <!-- Verificações -->
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all fade-in">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Verificações</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ stats.total_checks }}</p>
+                </div>
+                <div class="text-4xl">🔍</div>
+            </div>
+        </div>
+
+        <!-- Economia Total -->
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all fade-in">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm font-medium">Economia Total</p>
+                    <p class="text-3xl font-bold text-green-600 mt-2">R$ {{ "%.2f"|format(stats.total_savings) }}</p>
+                    {% if stats.products_below_target > 0 %}
+                    <p class="text-xs text-gray-500 mt-1">{{ stats.products_below_target }} produtos</p>
+                    {% endif %}
+                </div>
+                <div class="text-4xl">💰</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner de Atualização -->
+    <div class="mb-8 fade-in">
+        {% if update_info.type == 'danger' %}
+        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg">
+            <div class="flex items-start">
+                <span class="text-3xl mr-4">⚠️</span>
+                <div class="flex-1">
+                    <h3 class="text-red-800 font-bold text-lg mb-2">ATENÇÃO: Dados desatualizados!</h3>
+                    <p class="text-red-700">Última atualização: <strong>{{ update_info.timestamp }}</strong> (há <strong>{{ update_info.hours_since }} horas</strong>)</p>
+                    <p class="text-red-600 mt-2">Os preços exibidos podem não refletir os valores atuais dos sites.</p>
+                    <p class="text-red-600 mt-2">👉 Clique em "🔄 Atualizar Preços" para coletar preços atuais!</p>
+                </div>
+            </div>
+        </div>
+        {% elif update_info.type == 'warning' %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-lg">
+            <div class="flex items-start">
+                <span class="text-3xl mr-4">⏰</span>
+                <div class="flex-1">
+                    <p class="text-yellow-800">Última atualização: <strong>{{ update_info.timestamp }}</strong> (há <strong>{{ update_info.hours_since }} horas</strong>)</p>
+                    <p class="text-yellow-700 mt-2">💡 Considere atualizar os preços para ver as ofertas mais recentes!</p>
+                </div>
+            </div>
+        </div>
+        {% elif update_info.type == 'success' %}
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
+            <p class="text-green-800">✅ Dados atualizados: <strong>{{ update_info.timestamp }}</strong> (há <strong>{{ update_info.hours_since }} horas</strong>)</p>
+        </div>
+        {% else %}
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
+            <p class="text-blue-800">📭 Nenhum dado coletado ainda. Use o botão "Atualizar Preços" abaixo.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar com Ações -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Sidebar -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-md p-6 sticky top-4">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">⚙️ Ações</h3>
+
+                <!-- Botão Atualizar -->
+                <button
+                    @click="collectPrices()"
+                    :disabled="isCollecting"
+                    :class="isCollecting ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'"
+                    class="w-full gradient-primary text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 mb-4"
+                >
+                    <span x-show="!isCollecting">🔄 Atualizar Preços</span>
+                    <span x-show="isCollecting">
+                        <svg class="animate-spin h-5 w-5 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Coletando...
+                    </span>
+                </button>
+
+                <p x-show="collectionMessage" x-text="collectionMessage" class="text-sm text-gray-600 text-center"></p>
+
+                <!-- Filtros -->
+                <div class="mt-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">🔍 Filtros</h4>
+
+                    <label class="block text-sm text-gray-600 mb-2">Categoria</label>
+                    <select class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option>Todas</option>
+                        <option>CPU</option>
+                        <option>GPU</option>
+                        <option>Memória</option>
+                        <option>Storage</option>
+                    </select>
+
+                    <label class="block text-sm text-gray-600 mb-2">Loja</label>
+                    <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option>Todas</option>
+                        <option>Kabum</option>
+                        <option>Amazon</option>
+                        <option>Pichau</option>
+                        <option>MercadoLivre</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="lg:col-span-3">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-2xl font-bold text-gray-800 mb-6">⭐ Produtos Monitorados</h3>
+
+                {% if latest_prices %}
+                <div class="space-y-4">
+                    {% for price in latest_prices[:10] %}
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-gray-800">{{ price.product_name }}</h4>
+                                <p class="text-sm text-gray-500 mt-1">🏪 {{ price.store.upper() }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold text-purple-600">R$ {{ "%.2f"|format(price.price) }}</p>
+                                <a href="{{ price.url }}" target="_blank" class="inline-block mt-2 bg-purple-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                    🛒 Ver Oferta
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <p class="text-4xl mb-4">📭</p>
+                    <p class="text-gray-600">Nenhum preço coletado ainda.</p>
+                    <p class="text-gray-500 text-sm mt-2">Clique em "Atualizar Preços" para começar!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function dashboardData() {
+    return {
+        isCollecting: false,
+        collectionMessage: '',
+
+        init() {
+            console.log('Dashboard inicializado');
+        },
+
+        async collectPrices() {
+            this.isCollecting = true;
+            this.collectionMessage = 'Coletando preços... Aguarde alguns minutos.';
+
+            try {
+                const response = await fetch('/api/collect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    this.collectionMessage = data.message;
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    alert('Erro: ' + data.error);
+                    this.collectionMessage = '';
+                }
+            } catch (error) {
+                alert('Erro ao coletar preços: ' + error.message);
+                this.collectionMessage = '';
+            } finally {
+                this.isCollecting = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

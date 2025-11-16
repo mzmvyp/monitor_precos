@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Sobre - Monitor de Preços{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">ℹ️ Sobre o Sistema</h2>
+
+    <div class="bg-white rounded-xl shadow-md p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">📉 Monitor de Preços - Professional Edition</h3>
+        <p class="text-gray-600 mb-6">Sistema profissional e completo de monitoramento de preços desenvolvido com Flask (100% Python).</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+                <h4 class="font-semibold text-gray-800 mb-3">🎯 Funcionalidades:</h4>
+                <ul class="space-y-2 text-gray-600">
+                    <li>✅ Monitoramento automático de preços</li>
+                    <li>✅ Alertas por email</li>
+                    <li>✅ Gráficos e estatísticas</li>
+                    <li>✅ Gerenciamento de produtos</li>
+                    <li>✅ Import/Export de dados</li>
+                    <li>✅ Monitor de voos</li>
+                    <li>✅ Detecção de Open Box</li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-semibold text-gray-800 mb-3">🛠️ Tecnologias:</h4>
+                <ul class="space-y-2 text-gray-600">
+                    <li>🐍 Python 3.11</li>
+                    <li>🌶️ Flask (Web Framework)</li>
+                    <li>🎨 Tailwind CSS</li>
+                    <li>⚡ Alpine.js</li>
+                    <li>📊 Chart.js</li>
+                    <li>🔍 Selenium + BeautifulSoup</li>
+                    <li>🤖 DeepSeek AI (voos)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 mb-6">
+            <h4 class="font-semibold text-gray-800 mb-3">🏪 Lojas Suportadas:</h4>
+            <div class="flex flex-wrap gap-3">
+                <span class="bg-orange-100 text-orange-800 px-4 py-2 rounded-full font-semibold">🛒 Kabum</span>
+                <span class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full font-semibold">📦 Amazon</span>
+                <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-semibold">💻 Pichau</span>
+                <span class="bg-green-100 text-green-800 px-4 py-2 rounded-full font-semibold">🛍️ MercadoLivre</span>
+                <span class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full font-semibold">🚢 Royal Caribbean</span>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-200 pt-6">
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div>
+                    <p class="text-gray-500 text-sm">Versão</p>
+                    <p class="text-xl font-bold text-purple-600">5.0.0</p>
+                    <p class="text-xs text-gray-500">Flask Professional Edition</p>
+                </div>
+                <div>
+                    <p class="text-gray-500 text-sm">Status</p>
+                    <p class="text-xl font-bold text-green-600">✅ Produção</p>
+                    <p class="text-xs text-gray-500">100% Python</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-lg">
+        <h4 class="font-semibold text-green-800 mb-2">🎉 100% Python - Sem Node.js!</h4>
+        <p class="text-green-700 text-sm">
+            Este sistema foi desenvolvido <strong>completamente em Python</strong>, sem dependências de Node.js, npm ou ferramentas JavaScript.
+            Funciona perfeitamente em ambientes corporativos com restrições de instalação.
+        </p>
+    </div>
+</div>
+{% endblock %}

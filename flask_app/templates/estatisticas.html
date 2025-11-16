@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Estatísticas - Monitor de Preços{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">📈 Estatísticas e Análises</h2>
+
+    <!-- Métricas Gerais -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Total de Produtos</p>
+            <p class="text-3xl font-bold text-gray-800">{{ stats.total_products }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Produtos Ativos</p>
+            <p class="text-3xl font-bold text-green-600">{{ stats.active_products }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Total de URLs</p>
+            <p class="text-3xl font-bold text-blue-600">{{ stats.total_urls }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Verificações</p>
+            <p class="text-3xl font-bold text-purple-600">{{ stats.total_checks }}</p>
+        </div>
+    </div>
+
+    <!-- Estatísticas por Categoria -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+        <h3 class="text-xl font-bold text-gray-800 mb-6">📊 Produtos por Categoria</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for category, data in by_category.items() %}
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h4 class="font-semibold text-gray-800 mb-3">{{ category.upper() }}</h4>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Total:</span>
+                        <span class="font-semibold">{{ data.count }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Ativos:</span>
+                        <span class="font-semibold text-green-600">{{ data.active }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 text-sm">Preço Médio:</span>
+                        <span class="font-semibold">R$ {{ "%.2f"|format(data.total_price / data.count if data.count > 0 else 0) }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Produtos Abaixo da Meta -->
+    {% if stats.products_below_target > 0 %}
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-4">🎯 Produtos Abaixo da Meta</h3>
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+            <p class="text-green-800">
+                <strong>{{ stats.products_below_target }}</strong> produtos atingiram o preço desejado!
+            </p>
+            <p class="text-green-700 mt-2">
+                💰 Economia total potencial: <strong>R$ {{ "%.2f"|format(stats.total_savings) }}</strong>
+            </p>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="text-center py-8">
+            <p class="text-4xl mb-4">📭</p>
+            <p class="text-gray-600">Nenhum produto atingiu o preço desejado ainda.</p>
+            <p class="text-gray-500 text-sm mt-2">Continue monitorando!</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

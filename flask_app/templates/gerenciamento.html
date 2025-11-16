@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciamento - Monitor de Preços{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">⚙️ Gerenciamento de Produtos</h2>
+
+    <!-- Estatísticas Rápidas -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Total de Produtos</p>
+            <p class="text-3xl font-bold text-gray-800">{{ products|length }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Produtos Ativos</p>
+            <p class="text-3xl font-bold text-green-600">{{ products|selectattr('enabled')|list|length }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <p class="text-gray-500 text-sm">Produtos Inativos</p>
+            <p class="text-3xl font-bold text-gray-400">{{ products|rejectattr('enabled')|list|length }}</p>
+        </div>
+    </div>
+
+    <!-- Lista de Produtos -->
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800">📋 Produtos Cadastrados</h3>
+            <button class="gradient-primary text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all">
+                ➕ Adicionar Produto
+            </button>
+        </div>
+
+        <!-- Tabela de Produtos -->
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Produto</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Categoria</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Preço Desejado</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">URLs</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for product in products %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <p class="font-semibold text-gray-800">{{ product.name }}</p>
+                            <p class="text-xs text-gray-500">ID: {{ product.id }}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                                {{ product.category }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <p class="font-semibold text-gray-800">R$ {{ "%.2f"|format(product.desired_price) }}</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <p class="text-gray-600">{{ product.urls|length }} lojas</p>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if product.enabled %}
+                            <span class="inline-block bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-semibold">
+                                ✅ Ativo
+                            </span>
+                            {% else %}
+                            <span class="inline-block bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-semibold">
+                                ❌ Inativo
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button class="text-blue-600 hover:text-blue-800" title="Editar">✏️</button>
+                                <button class="text-red-600 hover:text-red-800" title="Remover">🗑️</button>
+                                <button class="text-purple-600 hover:text-purple-800" title="Duplicar">📋</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Seção de Import/Export -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">📤 Exportar Dados</h3>
+            <p class="text-gray-600 text-sm mb-4">Baixe seus produtos em formato CSV para backup.</p>
+            <a href="/api/export/csv" class="inline-block gradient-success text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all">
+                ⬇️ Download CSV
+            </a>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">📥 Importar Dados</h3>
+            <p class="text-gray-600 text-sm mb-4">Importe produtos de arquivo CSV.</p>
+            <button class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-all">
+                📁 Selecionar Arquivo
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

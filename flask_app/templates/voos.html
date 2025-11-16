@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Voos - Monitor de Preços{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto" x-data="{ isSearching: false }">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6">✈️ Monitor de Voos</h2>
+
+    <!-- Ação de Busca -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Buscar Voos com IA</h3>
+                <p class="text-gray-600 text-sm">💡 A busca usa DeepSeek AI e pode demorar ~5 minutos</p>
+            </div>
+            <button
+                @click="searchFlights()"
+                :disabled="isSearching"
+                :class="isSearching ? 'opacity-50' : 'hover:shadow-lg'"
+                class="gradient-primary text-white px-6 py-3 rounded-lg font-semibold transition-all"
+            >
+                <span x-show="!isSearching">🔍 Buscar Voos</span>
+                <span x-show="isSearching">⏳ Buscando...</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Lista de Voos -->
+    {% if flights %}
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-6">🎫 Voos Encontrados</h3>
+        <div class="space-y-4">
+            {% for flight in flights %}
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-800">{{ flight.airline }}</h4>
+                        <p class="text-sm text-gray-600 mt-1">
+                            {{ flight.origin }} → {{ flight.destination }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Ida: {{ flight.departure_date }} • Volta: {{ flight.return_date }}
+                        </p>
+                        <p class="text-xs text-gray-500">
+                            Duração: {{ flight.duration }} • Escalas: {{ flight.stops }}
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-purple-600">R$ {{ "%.0f"|format(flight.price) }}</p>
+                        <a href="{{ flight.url }}" target="_blank"
+                           class="inline-block mt-2 bg-purple-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                            ✈️ Ver Voo
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
+            <div class="text-center">
+                <p class="text-gray-500 text-sm">Menor Preço</p>
+                <p class="text-xl font-bold text-green-600">R$ {{ "%.0f"|format(flights|map(attribute='price')|min) }}</p>
+            </div>
+            <div class="text-center">
+                <p class="text-gray-500 text-sm">Preço Médio</p>
+                <p class="text-xl font-bold text-gray-800">R$ {{ "%.0f"|format(flights|map(attribute='price')|sum / flights|length) }}</p>
+            </div>
+            <div class="text-center">
+                <p class="text-gray-500 text-sm">Total de Voos</p>
+                <p class="text-xl font-bold text-purple-600">{{ flights|length }}</p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="text-center py-12">
+            <p class="text-6xl mb-4">✈️</p>
+            <p class="text-gray-600 text-lg mb-2">Nenhum voo encontrado ainda</p>
+            <p class="text-gray-500 text-sm">Clique em "Buscar Voos" para iniciar a busca</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function searchFlights() {
+    this.isSearching = true;
+    try {
+        const response = await fetch('/api/flights/collect', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Erro: ' + data.error);
+        }
+    } catch (error) {
+        alert('Erro: ' + error.message);
+    } finally {
+        this.isSearching = false;
+    }
+}
+</script>
+{% endblock %}
