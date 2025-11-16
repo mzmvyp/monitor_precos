@@ -1,7 +1,7 @@
 @echo off
-chcp 65001 >nul
+chcp 65001 >nul 2>&1
 echo ========================================
-echo  ATUALIZAR SISTEMA - Monitor de Preços
+echo  ATUALIZAR SISTEMA - Monitor de Precos
 echo ========================================
 echo.
 
@@ -12,58 +12,46 @@ timeout /t 2 >nul
 echo [2/5] Verificando branch atual...
 git branch --show-current
 
-echo [3/5] Baixando atualizações do git...
+echo [3/5] Baixando atualizacoes do git...
 git fetch origin
 git pull origin claude/fix-scraping-bugs-01RWBbLyhZA2aFqJaRAHcP8x
 
 echo [4/5] Verificando commits recentes...
 echo.
-echo Últimos 5 commits:
+echo Ultimos 5 commits:
 git log --oneline -5
 
 echo.
-echo [5/5] Validando arquivos críticos...
+echo [5/5] Validando arquivos criticos...
 echo.
 
-if exist "src\scrapers\kabum.py" (
-    findstr /C:"has_open_box" src\scrapers\kabum.py >nul
-    if errorlevel 1 (
-        echo ❌ Detecção de Open Box NÃO encontrada
-    ) else (
-        echo ✅ Detecção de Open Box OK
-    )
+findstr /C:"has_open_box" src\scrapers\kabum.py >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Deteccao de Open Box encontrada
 ) else (
-    echo ❌ Arquivo kabum.py não encontrado!
+    echo [ERRO] Deteccao de Open Box NAO encontrada
 )
 
-if exist "config\products.yaml" (
-    findstr /C:"terabyte" config\products.yaml >nul
-    if errorlevel 1 (
-        echo ✅ Terabyte removida OK
-    ) else (
-        echo ❌ Terabyte ainda presente!
-    )
+findstr /C:"terabyte" config\products.yaml >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [ERRO] Terabyte ainda presente
 ) else (
-    echo ❌ Arquivo products.yaml não encontrado!
+    echo [OK] Terabyte removida
 )
 
-if exist "src\alert_manager.py" (
-    findstr /C:"ZoneInfo" src\alert_manager.py >nul
-    if errorlevel 1 (
-        echo ❌ Timezone de Brasília NÃO configurado
-    ) else (
-        echo ✅ Timezone de Brasília OK
-    )
+findstr /C:"ZoneInfo" src\alert_manager.py >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] Timezone de Brasilia configurado
 ) else (
-    echo ❌ Arquivo alert_manager.py não encontrado!
+    echo [ERRO] Timezone de Brasilia NAO configurado
 )
 
 echo.
 echo ========================================
-echo ✅ ATUALIZAÇÃO CONCLUÍDA!
+echo  ATUALIZACAO CONCLUIDA!
 echo ========================================
 echo.
-echo Próximos passos:
+echo Proximos passos:
 echo 1. Rode: iniciar_monitor.bat
 echo 2. Aguarde alguns minutos
 echo 3. Acesse: http://localhost:8501
