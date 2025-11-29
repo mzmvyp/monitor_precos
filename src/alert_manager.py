@@ -143,12 +143,6 @@ class AlertManager:
         Returns:
             True se alerta foi enviado, False caso contrário
         """
-        if not previous_price or current_price >= previous_price:
-            return False
-        
-        # Calcular redução
-        reduction_percent = ((previous_price - current_price) / previous_price) * 100
-        
         # Verificar thresholds
         alerts_config = self.config.get("alerts", {})
         priority_products = alerts_config.get("priority_products", [])
@@ -160,20 +154,52 @@ class AlertManager:
             else alerts_config.get("price_drop_threshold", 5.0)
         )
         
+        # VALIDAÇÃO CRÍTICA: Verificar se o preço atual não é suspeito antes de qualquer alerta
+        # Detectar preços muito baixos que podem ser erros de scraping
+        if previous_price:
+            reduction_percent = ((previous_price - current_price) / previous_price) * 100
+            # Se redução > 80% e preço anterior era razoável (< 10k), provavelmente é erro
+            if reduction_percent > 80 and previous_price < 10000 and current_price < 500:
+                LOGGER.warning(
+                    f"⚠️ PREÇO SUSPEITO DETECTADO - Não enviando alerta: {product_name} "
+                    f"Preço atual: R$ {current_price:.2f} (anterior: R$ {previous_price:.2f}, "
+                    f"redução: {reduction_percent:.1f}%). Provável erro de scraping."
+                )
+                return False
+        
         # Verificar se deve alertar
         should_alert = False
+        reduction_percent = 0.0
         
-        # 1. Redução percentual
-        if reduction_percent >= threshold:
-            should_alert = True
-        
-        # 2. Abaixo do preço desejado
+        # 1. Abaixo do preço desejado (PRIORIDADE - sempre alerta, mesmo sem redução)
         if (
             alerts_config.get("below_desired_price", True) and
             desired_price and
             current_price <= desired_price
         ):
+            # VALIDAÇÃO: Se o preço desejado é muito maior que o atual, pode ser erro
+            if desired_price > current_price * 5 and current_price < 500:
+                LOGGER.warning(
+                    f"⚠️ PREÇO ABAIXO DO DESEJADO MAS SUSPEITO - Não enviando alerta: {product_name} "
+                    f"Preço atual: R$ {current_price:.2f} (desejado: R$ {desired_price:.2f}). "
+                    f"Diferença muito grande, provável erro de scraping."
+                )
+                return False
+            
             should_alert = True
+            # Calcular redução para exibir no email
+            if previous_price:
+                reduction_percent = ((previous_price - current_price) / previous_price) * 100
+            else:
+                reduction_percent = 0.0
+            LOGGER.info(f"🎯 Preço abaixo do desejado: {product_name} - R$ {current_price:.2f} <= R$ {desired_price:.2f}")
+        
+        # 2. Redução percentual (só se não estiver abaixo do desired_price)
+        elif previous_price and current_price < previous_price:
+            reduction_percent = ((previous_price - current_price) / previous_price) * 100
+            if reduction_percent >= threshold:
+                should_alert = True
+                LOGGER.info(f"📉 Redução detectada: {product_name} - {reduction_percent:.1f}% (threshold: {threshold}%)")
         
         if not should_alert:
             return False
@@ -196,13 +222,19 @@ class AlertManager:
         
         subject = subject_template.format(product_name=product_name)
         brasilia_now = datetime.now(ZoneInfo("America/Sao_Paulo"))
+        
+        # Formatar valores para o template
+        previous_price_str = f"{previous_price:.2f}" if previous_price else "N/A"
+        reduction_percent_str = f"{reduction_percent:.1f}%" if previous_price else "N/A"
+        desired_price_str = f"{desired_price:.2f}" if desired_price else "N/A"
+        
         body = body_template.format(
             product_name=product_name,
             store=store.upper(),
             current_price=f"{current_price:.2f}",
-            previous_price=f"{previous_price:.2f}",
-            reduction_percent=f"{reduction_percent:.1f}",
-            desired_price=f"{desired_price:.2f}" if desired_price else "N/A",
+            previous_price=previous_price_str,
+            reduction_percent=reduction_percent_str,
+            desired_price=desired_price_str,
             url=url,
             timestamp=brasilia_now.strftime("%d/%m/%Y %H:%M:%S"),
         )
