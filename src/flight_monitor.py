@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Dict
 
 import pandas as pd
 import yaml
@@ -14,6 +14,61 @@ from .flight_agent import FlightAgent, FlightOption
 from .alert_manager import AlertManager
 
 LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class FlightKey:
+    """Chave única para identificar um voo e evitar duplicatas."""
+    origin: str
+    destination: str
+    departure_date: str
+    return_date: str
+    airline: str
+    price_bucket: int  # Preço arredondado para R$ 100
+
+    @classmethod
+    def from_flight(cls, flight: FlightOption) -> 'FlightKey':
+        """Cria chave a partir de FlightOption."""
+        return cls(
+            origin=flight.origin,
+            destination=flight.destination,
+            departure_date=flight.departure_date,
+            return_date=flight.return_date,
+            airline=flight.airline,
+            price_bucket=int(flight.price / 100) * 100
+        )
+
+
+def deduplicate_flights(flights: list[FlightOption]) -> list[FlightOption]:
+    """
+    Remove voos duplicados mantendo o mais barato de cada grupo.
+
+    Voos são considerados duplicados se tiverem:
+    - Mesma origem/destino
+    - Mesmas datas
+    - Mesma companhia aérea
+    - Preços na mesma faixa (bucket de R$ 100)
+
+    Args:
+        flights: Lista de voos
+
+    Returns:
+        Lista de voos sem duplicatas, ordenada por preço
+    """
+    if not flights:
+        return []
+
+    seen: Dict[FlightKey, FlightOption] = {}
+
+    for flight in flights:
+        key = FlightKey.from_flight(flight)
+        if key not in seen or flight.price < seen[key].price:
+            seen[key] = flight
+
+    deduplicated = list(seen.values())
+    LOGGER.info(f"Deduplicação: {len(flights)} voos -> {len(deduplicated)} únicos")
+
+    return sorted(deduplicated, key=lambda f: f.price)
 
 
 class FlightMonitor:
@@ -113,7 +168,9 @@ class FlightMonitor:
                 # Adicionar ID do config
                 for flight in flights:
                     flight.flight_id = flight_id
-                
+
+                # Deduplicate antes de adicionar
+                flights = deduplicate_flights(flights)
                 all_flights.extend(flights)
                 
             except Exception as e:
