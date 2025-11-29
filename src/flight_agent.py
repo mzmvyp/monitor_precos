@@ -49,10 +49,10 @@ class FlightAgent:
         self.driver = None
         
     def _init_driver(self):
-        """Inicializa o Chrome driver."""
+        """Inicializa o Chrome driver (robusto a ambientes offline/proxy)."""
         if self.driver:
             return
-            
+        
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--no-sandbox")
@@ -64,21 +64,63 @@ class FlightAgent:
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/136.0.0.0 Safari/537.36"
         )
+        chrome_options.add_argument("--log-level=3")
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
         
-        # Usar ChromeDriver manual se disponível
         import os
+        import sys
         from pathlib import Path
-        manual_chromedriver = Path.home() / ".chromedriver" / "chromedriver-win64" / "chromedriver.exe"
         
-        if manual_chromedriver.exists():
-            service = Service(str(manual_chromedriver))
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-        else:
-            from webdriver_manager.chrome import ChromeDriverManager
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-            
+        env_chromedriver = os.getenv("CHROMEDRIVER_PATH")
+        exe_name = "chromedriver.exe" if os.name == "nt" else "chromedriver"
+        manual_locations = [
+            Path.home() / ".chromedriver" / exe_name,
+            Path.home() / ".chromedriver" / "chromedriver-win64" / "chromedriver.exe",
+            Path.home() / ".chromedriver" / "chromedriver-linux64" / "chromedriver",
+            Path.home() / ".chromedriver" / "chromedriver-mac-x64" / "chromedriver",
+        ]
+        
+        driver_path = None
+        if env_chromedriver and os.path.exists(env_chromedriver):
+            driver_path = env_chromedriver
+            LOGGER.info(f"FlightAgent: Usando ChromeDriver de CHROMEDRIVER_PATH: {driver_path}")
+        
+        if not driver_path:
+            for location in manual_locations:
+                if location.exists():
+                    driver_path = str(location)
+                    LOGGER.info(f"FlightAgent: Usando ChromeDriver manual: {driver_path}")
+                    break
+        
+        if not driver_path:
+            try:
+                from webdriver_manager.chrome import ChromeDriverManager
+                LOGGER.info("FlightAgent: Tentando webdriver-manager...")
+                driver_path = ChromeDriverManager().install()
+                if 'win32' in driver_path.lower() and sys.maxsize > 2**32:
+                    raise RuntimeError(
+                        "webdriver-manager baixou win32 em sistema 64 bits. "
+                        "Execute: python instalar_chromedriver_manual.py"
+                    )
+            except Exception as e:
+                LOGGER.error(f"FlightAgent: Erro com webdriver-manager: {e}")
+                raise RuntimeError(
+                    "FlightAgent: Falha ao instalar ChromeDriver automaticamente.\n"
+                    "SOLUÇÃO: execute 'python instalar_chromedriver_manual.py' ou defina CHROMEDRIVER_PATH."
+                )
+        
+        # Inicializar driver
+        service = Service(driver_path)
+        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        self.driver.set_page_load_timeout(40)
         LOGGER.info("FlightAgent: Chrome driver inicializado")
+    
+    def _is_driver_alive(self) -> bool:
+        try:
+            _ = self.driver.title
+            return True
+        except Exception:
+            return False
     
     def _call_deepseek(self, prompt: str, html_content: str = "") -> str:
         """Chama a API DeepSeek."""
@@ -142,7 +184,9 @@ class FlightAgent:
             departure_date: Data de ida (YYYY-MM-DD)
             return_date: Data de volta (YYYY-MM-DD)
         """
-        self._init_driver()
+        # Garantir que o driver existe (pode ter sido fechado anteriormente)
+        if not self.driver or not self._is_driver_alive():
+            self._init_driver()
         
         # Construir URL do Google Flights
         # Usar formato de busca direto
@@ -151,7 +195,7 @@ class FlightAgent:
         search_query = f"{origin} to {destination} {departure_date} to {return_date}"
         url = f"https://www.google.com/travel/flights?q={quote(search_query)}&curr=BRL&hl=pt-BR"
         
-        LOGGER.info(f"Buscando voos: {origin} → {destination} ({departure_date} a {return_date})")
+        LOGGER.info(f"Buscando voos: {origin} -> {destination} ({departure_date} a {return_date})")
         
         try:
             # Acessar Google Flights
@@ -369,7 +413,7 @@ class FlightAgent:
         for dest in destinations:
             for dep_date, ret_date in date_pairs:
                 search_count += 1
-                LOGGER.info(f"Busca {search_count}/{total_searches}: {origin}→{dest} ({dep_date} a {ret_date})")
+                LOGGER.info(f"Busca {search_count}/{total_searches}: {origin}->{dest} ({dep_date} a {ret_date})")
                 
                 flights = self.search_google_flights(origin, dest, dep_date, ret_date)
                 
@@ -381,7 +425,7 @@ class FlightAgent:
                 flights.sort(key=lambda f: f.price)
                 flights = flights[:top_n]
                 
-                LOGGER.info(f"  → Encontrados {len(flights)} voos (top {top_n})")
+                LOGGER.info(f"  -> Encontrados {len(flights)} voos (top {top_n})")
                 all_flights.extend(flights)
                 
                 # Delay entre buscas para não sobrecarregar
@@ -406,7 +450,7 @@ def test_flight_agent():
     agent = FlightAgent()
     
     try:
-        # Teste simples: GRU → Milão
+        # Teste simples: GRU -> Milao
         flights = agent.search_google_flights(
             origin="GRU",
             destination="MXP",
