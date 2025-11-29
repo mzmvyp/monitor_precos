@@ -11,7 +11,7 @@ import pandas as pd
 from .alert_manager import AlertManager
 from .config_loader import load_products_config
 from .models import PriceSnapshot, ProductConfig, attach_target_price
-from .scrapers import AmazonScraper, KabumScraper, MercadoLivreScraper, RoyalCaribbeanScraper
+from .scrapers import AmazonScraper, KabumScraper, MercadoLivreScraper, RoyalCaribbeanScraper, InpowerScraper
 from .scrapers.terabyte import TerabyteScraper
 from .scrapers.pichau import PichauScraper
 from .scrapers.base import StoreScraper
@@ -23,18 +23,41 @@ LOGGER = logging.getLogger(__name__)
 _SCRAPERS_CACHE: dict[str, StoreScraper] | None = None
 
 
-def get_scrapers() -> dict[str, StoreScraper]:
-    """Retorna scrapers (criados sob demanda para respeitar config SSL)."""
+def get_scrapers(required_stores: set[str] | None = None) -> dict[str, StoreScraper]:
+    """Retorna scrapers (criados sob demanda para respeitar config SSL).
+    
+    Args:
+        required_stores: Conjunto de lojas necessárias. Se None, cria todos os scrapers.
+    """
     global _SCRAPERS_CACHE
-    if _SCRAPERS_CACHE is None:
-        _SCRAPERS_CACHE = {
-            "kabum": KabumScraper(),
-            "amazon": AmazonScraper(),
-            "mercadolivre": MercadoLivreScraper(),
-            "terabyte": TerabyteScraper(),
-            "pichau": PichauScraper(),
-            "royalcaribbean": RoyalCaribbeanScraper(),
-        }
+    
+    # Mapear lojas para seus scrapers
+    scraper_classes = {
+        "kabum": KabumScraper,
+        "amazon": AmazonScraper,
+        "mercadolivre": MercadoLivreScraper,
+        "terabyte": TerabyteScraper,
+        "pichau": PichauScraper,
+        "royalcaribbean": RoyalCaribbeanScraper,
+        "inpower": InpowerScraper,
+    }
+    
+    # Se há lojas específicas necessárias, criar apenas essas
+    if required_stores is not None:
+        if _SCRAPERS_CACHE is None:
+            _SCRAPERS_CACHE = {}
+        
+        # Criar apenas os scrapers necessários que ainda não existem no cache
+        for store in required_stores:
+            if store not in _SCRAPERS_CACHE and store in scraper_classes:
+                _SCRAPERS_CACHE[store] = scraper_classes[store]()
+    else:
+        # Se não há cache, criar todos os scrapers (comportamento padrão)
+        if _SCRAPERS_CACHE is None:
+            _SCRAPERS_CACHE = {}
+            for store, scraper_class in scraper_classes.items():
+                _SCRAPERS_CACHE[store] = scraper_class()
+    
     return _SCRAPERS_CACHE
 
 
@@ -80,6 +103,17 @@ class PriceMonitor:
         """Coleta preços com retry automático para lojas problemáticas."""
         self._ensure_history_file()
         targets = product_ids or list(self.products.keys())
+
+        # Determinar quais lojas são necessárias baseado nos produtos configurados
+        required_stores = set()
+        for product_id in targets:
+            product = self.products.get(product_id)
+            if product:
+                for product_url in product.urls:
+                    required_stores.add(product_url.store)
+        
+        # Inicializar apenas os scrapers necessários
+        get_scrapers(required_stores=required_stores)
 
         snapshots: list[PriceSnapshot] = []
         failed_stores: dict[str, int] = {}  # store -> tentativas
@@ -211,7 +245,9 @@ class PriceMonitor:
         if failed_stores:
             LOGGER.info(f"Lojas com falhas (após retries): {failed_stores}")
 
-        enriched = attach_target_price(snapshots, self.products)
+        # Validar e filtrar outliers antes de anexar histórico e emitir alertas
+        validated = self._validate_snapshots(snapshots)
+        enriched = attach_target_price(validated, self.products)
         self._append_history(enriched)
         
         # Verificar alertas
@@ -219,6 +255,98 @@ class PriceMonitor:
             self._check_alerts(enriched)
         
         return enriched
+
+    def _validate_snapshots(self, snapshots: Iterable[PriceSnapshot]) -> list[PriceSnapshot]:
+        """
+        Aplica regras de sanidade para evitar registrar preços claramente errados.
+        - Ignora preços absurdos (> 50.000) exceto para categoria 'cruise'
+        - Ignora spikes muito acima do preço anterior (> 2.5x) quando anteriores existem
+        """
+        if not snapshots:
+            return []
+        
+        # Carregar último preço conhecido por (product_id, store)
+        try:
+            history_df = self.load_history()
+        except Exception:
+            history_df = pd.DataFrame()
+        
+        last_price_map: dict[tuple[str, str], float] = {}
+        if not history_df.empty:
+            valid_prices = history_df[history_df["price"].notna()]
+            if not valid_prices.empty:
+                valid_prices = valid_prices.sort_values("timestamp")
+                last_entries = valid_prices.groupby(["product_id", "store"]).tail(1)
+                for _, row in last_entries.iterrows():
+                    last_price_map[(row["product_id"], row["store"])] = float(row["price"])
+        
+        validated: list[PriceSnapshot] = []
+        for snap in snapshots:
+            # Se não tem preço ou já tem erro, manter como está
+            if snap.price is None or snap.error:
+                validated.append(snap)
+                continue
+            
+            # Regra 1: teto absoluto para categorias não-cruise
+            if snap.category != "cruise" and snap.price > 50000:
+                LOGGER.warning(
+                    "Descartando preço absurdo (%.2f) para %s (%s) - teto absoluto",
+                    snap.price, snap.product_name, snap.store,
+                )
+                snap.price = None
+                snap.error = "suspicious_price_above_cap"
+                validated.append(snap)
+                continue
+            
+            # Regra 2: spike vs último preço conhecido (aumento suspeito)
+            prev = last_price_map.get((snap.product_id, snap.store))
+            if prev:
+                # Detectar aumentos muito grandes (> 2.5x)
+                if snap.price > max(2000.0, prev * 2.5):
+                    LOGGER.warning(
+                        "Outlier detectado: atual %.2f vs anterior %.2f para %s (%s). Descartando.",
+                        snap.price, prev, snap.product_name, snap.store,
+                    )
+                    snap.price = None
+                    snap.error = "outlier_increase_vs_previous"
+                    validated.append(snap)
+                    continue
+                
+                # Regra 3: Detectar quedas muito grandes (> 80%) - provavelmente erro de scraping
+                # Exceto se o preço anterior era muito alto (pode ser promoção real)
+                reduction_percent = ((prev - snap.price) / prev) * 100
+                if reduction_percent > 80 and prev < 10000:  # Se redução > 80% e preço anterior < 10k
+                    LOGGER.warning(
+                        "Queda suspeita detectada: atual %.2f vs anterior %.2f (%.1f%% de redução) para %s (%s). Descartando.",
+                        snap.price, prev, reduction_percent, snap.product_name, snap.store,
+                    )
+                    snap.price = None
+                    snap.error = "suspicious_price_drop"
+                    validated.append(snap)
+                    continue
+            
+            # Regra 4: Validação por categoria - preços mínimos esperados
+            category_min_prices = {
+                "motherboard": 500.0,  # Placas-mãe geralmente custam > R$ 500
+                "memory": 200.0,       # Memórias geralmente custam > R$ 200
+                "cpu": 300.0,          # CPUs geralmente custam > R$ 300
+                "gpu": 1000.0,         # GPUs geralmente custam > R$ 1000
+                "storage": 100.0,      # SSDs geralmente custam > R$ 100
+            }
+            min_price = category_min_prices.get(snap.category)
+            if min_price and snap.price < min_price:
+                LOGGER.warning(
+                    "Preço abaixo do mínimo esperado para categoria %s: %.2f (mínimo: %.2f) para %s (%s). Descartando.",
+                    snap.category, snap.price, min_price, snap.product_name, snap.store,
+                )
+                snap.price = None
+                snap.error = "price_below_category_minimum"
+                validated.append(snap)
+                continue
+            
+            validated.append(snap)
+        
+        return validated
 
     def _append_history(self, snapshots: Iterable[PriceSnapshot]) -> None:
         if not snapshots:
@@ -288,6 +416,20 @@ class PriceMonitor:
             if not snap.price or snap.error:
                 continue
             
+            # Validar que a URL do snapshot ainda é uma URL configurada para este produto/loja
+            product = self.products.get(snap.product_id)
+            if not product:
+                continue
+            configured_urls_for_store = [u.url for u in product.urls if u.store == snap.store]
+            if configured_urls_for_store and snap.url not in configured_urls_for_store:
+                LOGGER.info(
+                    "Ignorando alerta para %s (%s): URL não pertence mais ao produto (%s)",
+                    snap.product_name,
+                    snap.store,
+                    snap.url,
+                )
+                continue
+            
             # Buscar preço anterior
             product_history = history[
                 (history["product_id"] == snap.product_id) &
@@ -295,23 +437,27 @@ class PriceMonitor:
                 (history["price"].notna())
             ].sort_values("timestamp")
             
-            if len(product_history) < 2:
-                continue  # Precisa de pelo menos 2 registros para comparar
-            
-            previous_price = product_history.iloc[-2]["price"]
-            
             # Obter preço desejado do produto
-            product = self.products.get(snap.product_id)
             desired_price = product.desired_price if product else None
             
+            # Preço anterior (se houver histórico)
+            previous_price = None
+            if len(product_history) >= 2:
+                previous_price = product_history.iloc[-2]["price"]
+            elif len(product_history) == 1:
+                # Primeira vez coletando - usar o preço atual como "anterior" para comparação
+                previous_price = product_history.iloc[-1]["price"]
+            
             # Verificar e enviar alerta
-            self.alert_manager.check_and_alert(
-                product_id=snap.product_id,
-                product_name=snap.product_name,
-                store=snap.store,
-                url=snap.url,
-                current_price=snap.price,
-                previous_price=previous_price,
-                desired_price=desired_price,
-            )
+            # Se não há histórico suficiente mas o preço está abaixo do desejado, ainda alerta
+            if previous_price or (desired_price and snap.price <= desired_price):
+                self.alert_manager.check_and_alert(
+                    product_id=snap.product_id,
+                    product_name=snap.product_name,
+                    store=snap.store,
+                    url=snap.url,
+                    current_price=snap.price,
+                    previous_price=previous_price,
+                    desired_price=desired_price,
+                )
 
