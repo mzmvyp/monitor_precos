@@ -10,6 +10,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from .selenium_base import SeleniumScraper, ScraperContext, LOGGER
+from selenium.common.exceptions import WebDriverException
 
 
 def parse_brl_price(value: str) -> float | None:
@@ -47,6 +48,18 @@ class RoyalCaribbeanScraper(SeleniumScraper):
     
     def _get_html(self, ctx: ScraperContext) -> str:
         """Override para Royal Caribbean com delays adequados."""
+        # Garantir que o driver existe (o base fecha após cada fetch)
+        def ensure_driver():
+            try:
+                # _is_driver_alive é definido na base
+                if not self._is_driver_alive():
+                    LOGGER.warning("Royal Caribbean: Driver inexistente/inválido, reinicializando...")
+                    self._init_driver()
+            except Exception:
+                self._init_driver()
+        
+        ensure_driver()
+        
         try:
             # Delay inicial
             time.sleep(random.uniform(2.0, 4.0))
@@ -68,6 +81,14 @@ class RoyalCaribbeanScraper(SeleniumScraper):
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
             time.sleep(random.uniform(1.0, 2.0))
             
+            return self.driver.page_source
+        except WebDriverException as e:
+            # Se o driver morreu entre o start e o get(), reiniciar uma vez e tentar novamente
+            LOGGER.warning(f"Royal Caribbean: WebDriverException, tentando reiniciar driver... ({e})")
+            self._init_driver()
+            time.sleep(1.0)
+            self.driver.get(ctx.url)
+            time.sleep(random.uniform(5.0, 8.0))
             return self.driver.page_source
         except Exception as e:
             LOGGER.error(f"Erro ao coletar HTML Royal Caribbean para {ctx.url}: {e}")
@@ -179,7 +200,14 @@ class RoyalCaribbeanScraper(SeleniumScraper):
             LOGGER.debug(f"Royal Caribbean: Erro ao extrair metadata: {e}")
         
         # Disponibilidade (assumir disponível se encontrou preço)
-        metadata["in_stock"] = price_value is not None
+        in_stock = price_value is not None
         
+        # Se não está disponível, não retornar preço
+        if not in_stock:
+            LOGGER.info(f"Royal Caribbean: Produto sem estoque - {ctx.url}")
+            metadata["in_stock"] = False
+            return None, None, metadata
+        
+        metadata["in_stock"] = True
         return price_value, raw_price, metadata
 
