@@ -78,8 +78,17 @@ class MercadoLivreScraper(SeleniumScraper):
             or bool(re.search(r'(\d+)\s*(unidade|disponível)', page_text))
         )
         
-        # Se não encontrar indicação de falta de estoque, assumir disponível
-        if not availability_text:
-            in_stock = "esgotado" not in page_text and "indisponível" not in page_text
+        # Verificar se está explicitamente indisponível
+        if not in_stock:
+            if any(word in page_text for word in ["esgotado", "indisponível", "sem estoque", "fora de estoque"]):
+                in_stock = False
+            elif not availability_text:
+                # Se não há informação de disponibilidade, assumir disponível se tem preço
+                in_stock = price_value is not None
+        
+        # Se não está disponível, não retornar preço
+        if not in_stock:
+            LOGGER.info(f"Mercado Livre: Produto sem estoque - {ctx.url}")
+            return None, None, {"in_stock": False, "availability": availability_text}
 
-        return price_value, raw_price, {"in_stock": in_stock, "availability": availability_text}
+        return price_value, raw_price, {"in_stock": True, "availability": availability_text}
