@@ -52,11 +52,25 @@ class AmazonScraper(SeleniumScraper):
             or "em estoque" in availability_text
             or "in stock" in availability_text
         )
+        
+        # Verificar também se não está indisponível
+        if not in_stock:
+            # Verificar se está explicitamente indisponível
+            if any(word in availability_text for word in ["indisponível", "unavailable", "out of stock", "esgotado"]):
+                in_stock = False
+            else:
+                # Se não há informação de disponibilidade, assumir disponível se tem preço
+                in_stock = price is not None
+
+        # Se não está disponível, não retornar preço
+        if not in_stock:
+            LOGGER.info(f"Amazon: Produto sem estoque - {ctx.url}")
+            return None, None, {"in_stock": False, "availability": availability_text}
 
         raw_price = price["raw"] if price else None
         value = price["value"] if price else None
 
-        return value, raw_price, {"in_stock": in_stock, "availability": availability_text}
+        return value, raw_price, {"in_stock": True, "availability": availability_text}
 
     def _extract_price(self, soup: BeautifulSoup) -> Optional[dict]:
         # Seletores atualizados para Amazon Brasil
