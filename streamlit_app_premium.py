@@ -4,10 +4,12 @@ import csv
 import io
 import json
 import logging
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from typing import Tuple, Optional
 
 import pandas as pd
 import streamlit as st
@@ -15,6 +17,7 @@ import yaml
 
 from src.price_monitor import PriceMonitor
 from src.flight_monitor import FlightMonitor
+from src.openbox_monitor import OpenBoxMonitor
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +25,8 @@ CONFIG_PATH = Path("config/products.yaml")
 HISTORY_PATH = Path("data/price_history.csv")
 FLIGHT_CONFIG_PATH = Path("config/flights.yaml")
 FLIGHT_HISTORY_PATH = Path("data/flight_history.csv")
+OPENBOX_HISTORY_PATH = Path("data/openbox_history.csv")
+OPENBOX_CONFIG_PATH = Path("config/openbox.yaml")
 
 st.set_page_config(
     page_title="Monitor de Preços - Professional Edition",
@@ -29,6 +34,98 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     page_icon="📉"
 )
+
+# ============================================================
+# FUNÇÕES DE VALIDAÇÃO ROBUSTAS
+# ============================================================
+
+def validate_product_id(product_id: str, config: dict, exclude_id: Optional[str] = None) -> Tuple[bool, str]:
+    """Valida ID do produto com regras rigorosas."""
+    if not product_id:
+        return False, "ID é obrigatório"
+    
+    if not re.match(r'^[a-z0-9-]+$', product_id):
+        return False, "ID deve conter apenas letras minúsculas, números e hífens"
+    
+    if len(product_id) < 3:
+        return False, "ID deve ter pelo menos 3 caracteres"
+    
+    if len(product_id) > 50:
+        return False, "ID deve ter no máximo 50 caracteres"
+    
+    # Verificar duplicação
+    for item in config.get('items', []):
+        if item['id'] == product_id and item['id'] != exclude_id:
+            return False, f"ID '{product_id}' já existe"
+    
+    return True, ""
+
+def validate_product_name(name: str) -> Tuple[bool, str]:
+    """Valida nome do produto - não pode ser URL."""
+    if not name or not name.strip():
+        return False, "Nome é obrigatório"
+    
+    if name.startswith("http://") or name.startswith("https://"):
+        return False, "Nome não pode ser uma URL"
+    
+    if len(name) < 5:
+        return False, "Nome deve ter pelo menos 5 caracteres"
+    
+    if len(name) > 100:
+        return False, "Nome deve ter no máximo 100 caracteres"
+    
+    if name.strip().isdigit():
+        return False, "Nome não pode ser apenas números"
+    
+    return True, ""
+
+def validate_url(url: str, store: str) -> Tuple[bool, str]:
+    """Valida URL e verifica se corresponde à loja."""
+    if not url:
+        return False, "URL é obrigatória"
+    
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return False, "URL deve começar com http:// ou https://"
+    
+    # Mapear domínios esperados
+    store_domains = {
+        "kabum": ["kabum.com.br"],
+        "amazon": ["amazon.com.br", "amazon.com"],
+        "pichau": ["pichau.com.br"],
+        "terabyte": ["terabyteshop.com.br"],
+        "mercadolivre": ["mercadolivre.com.br", "mercadolivre.com"],
+        "royalcaribbean": ["royalcaribbean.com"],
+        "inpower": ["inpower.com.br"],
+    }
+    
+    expected_domains = store_domains.get(store, [])
+    if expected_domains:
+        domain_found = any(domain in url.lower() for domain in expected_domains)
+        if not domain_found:
+            return False, f"URL não corresponde à loja {store.upper()}"
+    
+    return True, ""
+
+def suggest_product_id(name: str, config: dict) -> str:
+    """Gera sugestão de ID baseado no nome."""
+    if not name:
+        return ""
+    
+    # Remover caracteres especiais e converter para minúsculas
+    suggested = re.sub(r'[^a-z0-9\s]+', '', name.lower())
+    # Substituir espaços por hífens
+    suggested = re.sub(r'\s+', '-', suggested.strip())
+    # Limitar tamanho
+    suggested = suggested[:50]
+    
+    # Se o ID já existe, adicionar sufixo numérico
+    base_id = suggested
+    counter = 1
+    while any(item['id'] == suggested for item in config.get('items', [])):
+        suggested = f"{base_id}-{counter}"
+        counter += 1
+    
+    return suggested
 
 # ============================================================
 # FUNÇÕES AUXILIARES
@@ -53,7 +150,9 @@ def update_product(config, product_id, updates):
     """Atualiza produto existente."""
     for item in config['items']:
         if item['id'] == product_id:
-            item.update(updates)
+            # Fazer merge seguro: atualizar apenas os campos fornecidos
+            for key, value in updates.items():
+                item[key] = value
             break
     save_yaml_config(config)
 
@@ -275,11 +374,13 @@ st.markdown("""
 # ABAS PRINCIPAIS
 # ============================================================
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📊 Dashboard",
     "⚙️ Gerenciamento",
     "📈 Estatísticas",
     "✈️ Voos",
+    "📦 Open Box",
+    "🛒 Google Shopping",
     "ℹ️ Sobre"
 ])
 
@@ -429,7 +530,7 @@ with tab1:
 
         selected_stores = st.multiselect(
             "Lojas",
-            options=["Todas", "kabum", "amazon", "pichau", "terabyte", "mercadolivre", "other"],
+            options=["Todas", "kabum", "amazon", "pichau", "terabyte", "mercadolivre", "royalcaribbean", "inpower", "other"],
             default=["Todas"]
         )
 
@@ -838,8 +939,37 @@ with tab1:
                 with col_filter3:
                     view_mode = st.radio("Visualização", ["Compacta", "Detalhada"], horizontal=True)
 
-                # Aplicar busca
-                filtered_df = latest_df.copy()
+                # Construir catálogo a partir do config atual e anexar último preço se houver
+                config_items = load_yaml_config()["items"]
+                catalog_rows = []
+                for item in config_items:
+                    for u in item.get("urls", []):
+                        catalog_rows.append({
+                            "product_id": item["id"],
+                            "product_name": item["name"],
+                            "category": item["category"],
+                            "desired_price": item.get("desired_price"),
+                            "enabled": item.get("enabled", True),
+                            "store": u.get("store"),
+                            "url": u.get("url"),
+                        })
+                import pandas as pd
+                catalog_df = pd.DataFrame(catalog_rows) if catalog_rows else pd.DataFrame(
+                    columns=["product_id","product_name","category","desired_price","enabled","store","url"]
+                )
+                latest_min = latest_df[["product_id","store","price","timestamp","url"]].rename(
+                    columns={"url": "last_url"}
+                ) if 'latest_df' in locals() else pd.DataFrame(
+                    columns=["product_id","store","price","timestamp","last_url"]
+                )
+                merged = catalog_df.merge(latest_min, on=["product_id","store"], how="left")
+                # Sempre preferir a URL do config (corrige links antigos/errados)
+                merged["display_url"] = merged["url"]
+                merged["last_price"] = merged["price"]
+                merged["last_update"] = merged["timestamp"]
+
+                # Aplicar busca por nome
+                filtered_df = merged.copy()
                 if search_term:
                     filtered_df = filtered_df[
                         filtered_df["product_name"].str.contains(search_term, case=False, na=False)
@@ -847,28 +977,25 @@ with tab1:
 
                 # Aplicar ordenação
                 if sort_by == "Menor preço":
-                    filtered_df = filtered_df.sort_values("price", ascending=True)
+                    filtered_df = filtered_df.sort_values("last_price", ascending=True, na_position="last")
                 elif sort_by == "Maior preço":
-                    filtered_df = filtered_df.sort_values("price", ascending=False)
+                    filtered_df = filtered_df.sort_values("last_price", ascending=False, na_position="last")
                 elif sort_by == "Nome (A-Z)":
                     filtered_df = filtered_df.sort_values("product_name")
                 elif sort_by == "Loja":
                     filtered_df = filtered_df.sort_values("store")
                 elif sort_by == "Última atualização":
-                    filtered_df = filtered_df.sort_values("timestamp", ascending=False)
+                    filtered_df = filtered_df.sort_values("last_update", ascending=False, na_position="last")
 
                 st.caption(f"📊 Exibindo {len(filtered_df)} produtos")
 
                 if view_mode == "Compacta":
                     # Visualização em tabela compacta
-                    display_df = filtered_df[[
-                        "product_name",
-                        "store",
-                        "price",
-                        "tendencia",
-                        "status",
-                        "url",
-                    ]].copy()
+                    display_df = filtered_df[["product_name","store","last_price","display_url"]].copy()
+                    display_df = display_df.rename(columns={
+                        "last_price": "price",
+                        "display_url": "url",
+                    })
 
                     st.dataframe(
                         display_df,
@@ -1079,14 +1206,34 @@ with tab2:
 
             with col1:
                 new_name = st.text_input("Nome do Produto*", placeholder="Ex: Processador AMD Ryzen 5 7600X")
+                
+                # Validação em tempo real do nome
+                if new_name:
+                    is_valid, error = validate_product_name(new_name)
+                    if not is_valid:
+                        st.warning(f"⚠️ {error}")
+                
                 new_id = st.text_input(
                     "ID do Produto*",
                     placeholder="Ex: cpu-ryzen-5-7600x",
                     help="Identificador único (sem espaços, use hífens)"
                 )
+                
+                # Sugestão automática de ID
+                if new_name and not new_id:
+                    suggested_id = suggest_product_id(new_name, config)
+                    if suggested_id:
+                        st.info(f"💡 Sugestão: `{suggested_id}`")
+                
+                # Validação em tempo real do ID
+                if new_id:
+                    is_valid, error = validate_product_id(new_id, config)
+                    if not is_valid:
+                        st.warning(f"⚠️ {error}")
+                
                 new_category = st.selectbox(
                     "Categoria*",
-                    options=["cpu", "motherboard", "memory", "storage", "gpu", "psu", "cooler", "case", "other"]
+                    options=["cpu", "motherboard", "memory", "storage", "gpu", "psu", "cooler", "case", "cruise", "other"]
                 )
 
             with col2:
@@ -1101,42 +1248,59 @@ with tab2:
             st.markdown("### 🔗 URLs das Lojas")
             num_urls = st.number_input("Número de lojas", min_value=1, max_value=10, value=1)
 
-            urls_data = []
+            # Criar campos para URLs
+            url_fields = []
             for i in range(num_urls):
                 col_store, col_url = st.columns([1, 3])
                 with col_store:
                     store = st.selectbox(
                         f"Loja {i+1}",
-                        options=["kabum", "amazon", "pichau", "terabyte", "mercadolivre", "other"],
+                        options=["kabum", "amazon", "pichau", "terabyte", "mercadolivre", "royalcaribbean", "inpower", "other"],
                         key=f"store_{i}"
                     )
                 with col_url:
                     url = st.text_input(f"URL {i+1}", placeholder="https://...", key=f"url_{i}")
-                if store and url:
-                    urls_data.append({"store": store, "url": url})
+                url_fields.append({"store": store, "url": url})
 
             submitted = st.form_submit_button("✅ Adicionar Produto", type="primary")
 
             if submitted:
+                # Validar nome (não pode ser uma URL)
                 if not new_name or not new_id:
                     st.error("❌ Nome e ID são obrigatórios!")
+                elif new_name.startswith("http://") or new_name.startswith("https://"):
+                    st.error("❌ O nome do produto não pode ser uma URL! Digite um nome descritivo.")
                 elif any(item['id'] == new_id for item in config['items']):
                     st.error(f"❌ Já existe um produto com o ID '{new_id}'!")
-                elif not urls_data:
-                    st.error("❌ Adicione pelo menos uma URL!")
                 else:
-                    new_product = {
-                        'id': new_id,
-                        'name': new_name,
-                        'category': new_category,
-                        'desired_price': new_price,
-                        'enabled': new_enabled,
-                        'urls': urls_data
-                    }
-                    add_product(config, new_product)
-                    st.success(f"✅ Produto '{new_name}' adicionado!")
-                    st.balloons()
-                    st.rerun()
+                    # Coletar URLs válidas apenas quando o form for submetido
+                    urls_data = []
+                    for url_field in url_fields:
+                        store = url_field.get("store", "").strip()
+                        url = url_field.get("url", "").strip()
+                        if store and url:
+                            # Validar URL com função robusta
+                            is_valid, error = validate_url(url, store)
+                            if is_valid:
+                                urls_data.append({"store": store, "url": url})
+                            else:
+                                st.warning(f"⚠️ URL ignorada ({store}): {error}")
+                    
+                    if not urls_data:
+                        st.error("❌ Adicione pelo menos uma URL válida!")
+                    else:
+                        new_product = {
+                            'id': new_id,
+                            'name': new_name.strip(),
+                            'category': new_category,
+                            'desired_price': new_price,
+                            'enabled': new_enabled,
+                            'urls': urls_data
+                        }
+                        add_product(config, new_product)
+                        st.success(f"✅ Produto '{new_name}' adicionado com {len(urls_data)} URL(s)!")
+                        st.balloons()
+                        st.rerun()
 
     # Sub-tab 3: Editar (mantido do anterior)
     with subtab3:
@@ -1157,10 +1321,11 @@ with tab2:
 
                     with col1:
                         edit_name = st.text_input("Nome", value=product['name'])
+                        category_options = ["cpu", "motherboard", "memory", "storage", "gpu", "psu", "cooler", "case", "cruise", "other"]
                         edit_category = st.selectbox(
                             "Categoria",
-                            options=["cpu", "motherboard", "memory", "storage", "gpu", "psu", "cooler", "case", "other"],
-                            index=["cpu", "motherboard", "memory", "storage", "gpu", "psu", "cooler", "case", "other"].index(product['category'])
+                            options=category_options,
+                            index=category_options.index(product['category']) if product['category'] in category_options else 9
                         )
 
                     with col2:
@@ -1173,37 +1338,102 @@ with tab2:
                         edit_enabled = st.checkbox("Ativo", value=product.get('enabled', True))
 
                     st.markdown("### URLs Atuais")
+                    # Permitir editar URLs existentes
                     for idx, url_data in enumerate(product.get('urls', [])):
-                        col_s, col_u = st.columns([1, 3])
+                        col_s, col_u, col_del = st.columns([1, 3, 0.5])
                         with col_s:
-                            st.text_input(f"Loja {idx+1}", value=url_data['store'], key=f"e_s_{idx}", disabled=True)
+                            store_options = ["kabum", "amazon", "pichau", "terabyte", "mercadolivre", "royalcaribbean", "inpower", "other"]
+                            edited_store = st.selectbox(
+                                f"Loja {idx+1}",
+                                options=store_options,
+                                index=store_options.index(url_data.get('store', 'kabum')) if url_data.get('store', 'kabum') in store_options else 0,
+                                key=f"edit_store_{product_id}_{idx}"
+                            )
                         with col_u:
-                            st.text_input(f"URL {idx+1}", value=url_data['url'], key=f"e_u_{idx}", disabled=True)
+                            edited_url = st.text_input(
+                                f"URL {idx+1}",
+                                value=url_data.get('url', ''),
+                                key=f"edit_url_{product_id}_{idx}"
+                            )
+                        with col_del:
+                            delete_url = st.checkbox("🗑️", key=f"delete_url_{product_id}_{idx}", help="Remover esta URL")
 
-                    st.markdown("### Adicionar URL")
+                    st.markdown("### Adicionar Nova URL")
                     col_new_store, col_new_url = st.columns([1, 3])
                     with col_new_store:
-                        new_store = st.selectbox("Loja", options=["", "kabum", "amazon", "pichau", "terabyte", "mercadolivre"], key="new_s")
+                        new_store = st.selectbox(
+                            "Nova Loja",
+                            options=["", "kabum", "amazon", "pichau", "terabyte", "mercadolivre", "royalcaribbean", "inpower", "other"],
+                            key=f"new_store_{product_id}"
+                        )
                     with col_new_url:
-                        new_url = st.text_input("URL", placeholder="https://...", key="new_u")
+                        new_url = st.text_input(
+                            "Nova URL",
+                            placeholder="https://...",
+                            key=f"new_url_{product_id}"
+                        )
 
                     submitted = st.form_submit_button("💾 Salvar", type="primary")
 
                     if submitted:
-                        updated_urls = product.get('urls', []).copy()
-                        if new_store and new_url:
-                            updated_urls.append({"store": new_store, "url": new_url})
-
-                        updates = {
-                            'name': edit_name,
-                            'category': edit_category,
-                            'desired_price': edit_price,
-                            'enabled': edit_enabled,
-                            'urls': updated_urls
-                        }
-                        update_product(config, product_id, updates)
-                        st.success("✅ Produto atualizado!")
-                        st.rerun()
+                        # Validar nome (não pode ser uma URL)
+                        if not edit_name or edit_name.strip() == "":
+                            st.error("❌ Nome é obrigatório!")
+                        elif edit_name.startswith("http://") or edit_name.startswith("https://"):
+                            st.error("❌ O nome do produto não pode ser uma URL! Digite um nome descritivo.")
+                        else:
+                            # Coletar URLs editadas quando o form for submetido
+                            updated_urls = []
+                            for idx, url_data in enumerate(product.get('urls', [])):
+                                # Ler valores dos campos quando o form é submetido
+                                delete_key = f"delete_url_{product_id}_{idx}"
+                                store_key = f"edit_store_{product_id}_{idx}"
+                                url_key = f"edit_url_{product_id}_{idx}"
+                                
+                                # Verificar se a URL foi marcada para deletar
+                                if delete_key in st.session_state and st.session_state[delete_key]:
+                                    continue  # Pular esta URL
+                                
+                                # Ler valores editados
+                                edited_store_val = st.session_state.get(store_key, url_data.get('store', ''))
+                                edited_url_val = st.session_state.get(url_key, url_data.get('url', ''))
+                                
+                                if edited_store_val and edited_url_val:
+                                    edited_url_val = edited_url_val.strip()
+                                    # Validar URL com função robusta
+                                    is_valid, error = validate_url(edited_url_val, edited_store_val)
+                                    if is_valid:
+                                        updated_urls.append({"store": edited_store_val, "url": edited_url_val})
+                                    else:
+                                        st.warning(f"⚠️ URL {idx+1}: {error}")
+                            
+                            # Adicionar nova URL se fornecida
+                            new_store_key = f"new_store_{product_id}"
+                            new_url_key = f"new_url_{product_id}"
+                            new_store_val = st.session_state.get(new_store_key, "").strip()
+                            new_url_val = st.session_state.get(new_url_key, "").strip()
+                            
+                            if new_store_val and new_url_val:
+                                # Validar URL com função robusta
+                                is_valid, error = validate_url(new_url_val, new_store_val)
+                                if is_valid:
+                                    updated_urls.append({"store": new_store_val, "url": new_url_val})
+                                else:
+                                    st.warning(f"⚠️ Nova URL: {error}")
+                            
+                            if not updated_urls:
+                                st.error("❌ O produto deve ter pelo menos uma URL!")
+                            else:
+                                updates = {
+                                    'name': edit_name.strip(),
+                                    'category': edit_category,
+                                    'desired_price': edit_price,
+                                    'enabled': edit_enabled,
+                                    'urls': updated_urls
+                                }
+                                update_product(config, product_id, updates)
+                                st.success(f"✅ Produto atualizado com {len(updated_urls)} URL(s)!")
+                                st.rerun()
 
     # Sub-tab 4: Import/Export
     with subtab4:
@@ -1528,11 +1758,12 @@ with tab4:
             if not flights_df.empty:
                 st.subheader("🎫 Melhores Voos")
 
-                display_df = flights_df[[
-                    "airline", "origin", "destination",
-                    "departure_date", "return_date", "price",
-                    "stops", "duration", "url"
-                ]].copy()
+                # Selecionar apenas colunas que existem
+                available_cols = ["airline", "origin", "destination",
+                                 "departure_date", "return_date", "price",
+                                 "stops", "duration", "url"]
+                display_cols = [col for col in available_cols if col in flights_df.columns]
+                display_df = flights_df[display_cols].copy()
 
                 st.dataframe(
                     display_df,
@@ -1547,23 +1778,488 @@ with tab4:
 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("💰 Menor", f"R$ {flights_df['price'].min():.2f}")
+                    if "price" in flights_df.columns and flights_df["price"].notna().any():
+                        st.metric("💰 Menor", f"R$ {flights_df['price'].min():.2f}")
+                    else:
+                        st.metric("💰 Menor", "N/A")
                 with col2:
-                    st.metric("📊 Médio", f"R$ {flights_df['price'].mean():.2f}")
+                    if "price" in flights_df.columns and flights_df["price"].notna().any():
+                        st.metric("📊 Médio", f"R$ {flights_df['price'].mean():.2f}")
+                    else:
+                        st.metric("📊 Médio", "N/A")
                 with col3:
                     st.metric("✈️ Total", len(flights_df))
             else:
                 st.info("📭 Nenhum voo encontrado")
         except Exception as e:
             st.warning(f"⚠️ Erro: {e}")
+            import traceback
+            with st.expander("📋 Detalhes do erro"):
+                st.code(traceback.format_exc())
     else:
         st.info("📭 Configure em `config/flights.yaml`")
 
 # ============================================================
-# ABA 5: SOBRE
+# ABA 5: OPEN BOX
 # ============================================================
 
 with tab5:
+    st.header("📦 Monitor de Open Box - Kabum")
+    
+    # Tabs principais: Visualização e Configuração
+    main_tab1, main_tab2 = st.tabs(["📊 Visualização", "⚙️ Configuração"])
+    
+    with main_tab1:
+        col1, col2 = st.columns([1, 3])
+        with col1:
+            if st.button("🔍 Buscar Open Box Agora", help="Busca produtos Open Box na Kabum"):
+                with st.spinner("Buscando produtos Open Box... Isso pode levar alguns minutos."):
+                    try:
+                        openbox_monitor = OpenBoxMonitor(history_path=OPENBOX_HISTORY_PATH)
+                        products = openbox_monitor.collect()
+                        st.success(f"✅ {len(products)} produtos Open Box encontrados!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Erro: {e}")
+                        import traceback
+                        with st.expander("📋 Detalhes do erro"):
+                            st.code(traceback.format_exc())
+        
+        with col2:
+            st.info("💡 O monitor Open Box roda automaticamente a cada 10 minutos quando o sistema está ativo")
+        
+        if OPENBOX_HISTORY_PATH.exists():
+            try:
+                # Carregar histórico
+                openbox_df = pd.read_csv(OPENBOX_HISTORY_PATH, encoding="utf-8")
+                
+                if not openbox_df.empty:
+                    # Converter timestamp e normalizar para UTC
+                    openbox_df["timestamp"] = pd.to_datetime(openbox_df["timestamp"], format="mixed", errors="coerce", utc=True)
+                    openbox_df = openbox_df[openbox_df["timestamp"].notna()]
+                    
+                    if openbox_df.empty:
+                        st.info("📭 Nenhum produto Open Box válido no histórico")
+                    else:
+                        # Filtrar por categoria
+                        st.subheader("🔍 Filtros")
+                        category_filter = st.selectbox(
+                            "Categoria",
+                            options=["Todas", "memory", "psu", "cpu"],
+                            index=0
+                        )
+                        
+                        # Aplicar filtro
+                        display_df = openbox_df.copy()
+                        if category_filter != "Todas":
+                            display_df = display_df[display_df["category"] == category_filter]
+                        
+                        # Ordenar por mais recente
+                        display_df = display_df.sort_values("timestamp", ascending=False)
+                        
+                        # Mostrar apenas últimos 7 dias por padrão
+                        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+                        recent_df = display_df[display_df["timestamp"] >= seven_days_ago]
+                        
+                        st.subheader("📦 Produtos Open Box Encontrados")
+                        
+                        # Métricas
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("📦 Total", len(display_df))
+                        with col2:
+                            st.metric("🆕 Últimos 7 dias", len(recent_df))
+                        with col3:
+                            if not display_df.empty:
+                                st.metric("💰 Menor Preço", f"R$ {display_df['price'].min():.2f}")
+                        with col4:
+                            if not display_df.empty:
+                                st.metric("📊 Média", f"R$ {display_df['price'].mean():.2f}")
+                        
+                        st.markdown("---")
+                        
+                        # Tabs para visualização
+                        view_tab1, view_tab2 = st.tabs(["🆕 Recentes (7 dias)", "📜 Histórico Completo"])
+                        
+                        with view_tab1:
+                            if not recent_df.empty:
+                                # Agrupar por produto (mesma URL) e pegar o mais recente
+                                latest_recent = recent_df.groupby("url").first().reset_index()
+                                latest_recent = latest_recent.sort_values("timestamp", ascending=False)
+                                
+                                for idx, row in latest_recent.iterrows():
+                                    category_emoji = {
+                                        "memory": "💾",
+                                        "psu": "⚡",
+                                        "cpu": "🔧"
+                                    }.get(row["category"], "📦")
+                                    
+                                    category_name = {
+                                        "memory": "Memória",
+                                        "psu": "Fonte",
+                                        "cpu": "Processador"
+                                    }.get(row["category"], row["category"])
+                                    
+                                    timestamp_br = row["timestamp"].astimezone(ZoneInfo("America/Sao_Paulo"))
+                                    
+                                    with st.container():
+                                        st.markdown(f"""
+                                        <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0;">
+                                            <h4 style="margin: 0;">
+                                                {category_emoji} <strong>{row['name']}</strong>
+                                                <span style="color: #666; font-size: 0.8em;">({category_name})</span>
+                                            </h4>
+                                            <p style="margin: 5px 0; font-size: 1.3em; color: #10b981; font-weight: bold;">
+                                                R$ {row['price']:.2f}
+                                            </p>
+                                            <p style="margin: 0; font-size: 0.85em; color: #666;">
+                                                📅 {timestamp_br.strftime('%d/%m/%Y %H:%M')} | 
+                                                🔗 <a href="{row['url']}" target="_blank">Ver na Kabum</a>
+                                            </p>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                            else:
+                                st.info("📭 Nenhum produto Open Box encontrado nos últimos 7 dias")
+                        
+                        with view_tab2:
+                            if not display_df.empty:
+                                # Agrupar por URL e pegar o mais recente de cada
+                                latest_all = display_df.groupby("url").first().reset_index()
+                                latest_all = latest_all.sort_values("timestamp", ascending=False)
+                                
+                                # Mostrar em tabela
+                                table_df = latest_all[[
+                                    "name", "category", "price", "timestamp", "url"
+                                ]].copy()
+                                table_df["category"] = table_df["category"].map({
+                                    "memory": "💾 Memória",
+                                    "psu": "⚡ Fonte",
+                                    "cpu": "🔧 CPU"
+                                })
+                                table_df["timestamp"] = table_df["timestamp"].dt.strftime("%d/%m/%Y %H:%M")
+                                table_df.columns = ["Nome", "Categoria", "Preço", "Data", "URL"]
+                                
+                                st.dataframe(
+                                    table_df,
+                                    width="stretch",
+                                    hide_index=True,
+                                    column_config={
+                                        "Preço": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
+                                        "URL": st.column_config.LinkColumn("Link"),
+                                    }
+                                )
+                            else:
+                                st.info("📭 Nenhum produto Open Box no histórico")
+                else:
+                    st.info("📭 Nenhum produto Open Box encontrado ainda. O monitor roda automaticamente a cada 10 minutos.")
+            except Exception as e:
+                st.warning(f"⚠️ Erro ao carregar histórico: {e}")
+                import traceback
+                with st.expander("📋 Detalhes do erro"):
+                    st.code(traceback.format_exc())
+        else:
+            st.info("📭 Nenhum produto Open Box encontrado ainda. O monitor roda automaticamente a cada 10 minutos.")
+        
+        st.markdown("---")
+        st.markdown("""
+        ### 📋 Critérios de Filtro
+        
+        O monitor Open Box busca produtos que atendem aos seguintes critérios:
+        
+        - **💾 Memórias DDR5**: 16GB ou 32GB+, preço < R$ 1.300
+        - **⚡ Fontes**: 80 Plus Gold, 750W ou mais
+        - **🔧 Processadores**: AMD Ryzen 7xxx ou 9xxx
+        
+        ⚠️ **Nota:** Produtos Open Box são itens com caixa aberta, devolução ou mostruário. 
+        Funcionam perfeitamente, mas podem ter sinais de uso.
+        """)
+    
+    with main_tab2:
+        st.subheader("⚙️ Configuração do Monitor Open Box")
+        st.caption("Edite os critérios de busca e filtros para cada categoria")
+        
+        # Carregar configuração Open Box
+        def load_openbox_config():
+            if OPENBOX_CONFIG_PATH.exists():
+                with open(OPENBOX_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+            return None
+        
+        def save_openbox_config(config):
+            with open(OPENBOX_CONFIG_PATH, 'w', encoding='utf-8') as f:
+                yaml.dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        
+        openbox_config = load_openbox_config()
+        
+        if not openbox_config:
+            st.warning("⚠️ Arquivo de configuração não encontrado. Criando configuração padrão...")
+            openbox_config = {
+                "categories": {
+                    "memory": {
+                        "enabled": True,
+                        "url": "https://www.kabum.com.br/hardware/memoria-ram/ddr-5?page_number=1&page_size=20&facet_filters=eyJoYXNfb3Blbl9ib3giOlsidHJ1ZSJdfQ==&sort=most_searched",
+                        "filters": {
+                            "min_capacity_gb": 16,
+                            "max_price": 1300.0,
+                            "exclude_notebook": True,
+                            "exclude_keywords": ["NOTEBOOK", "LAPTOP", "SO-DIMM", "SODIMM", "MOBILE"]
+                        }
+                    },
+                    "psu": {
+                        "enabled": True,
+                        "url": "https://www.kabum.com.br/hardware/fontes?page_number=1&page_size=20&facet_filters=eyJoYXNfb3Blbl9ib3giOlsidHJ1ZSJdfQ==&sort=most_searched",
+                        "filters": {
+                            "min_watts": 750,
+                            "efficiency": "GOLD",
+                            "max_price": None
+                        }
+                    },
+                    "cpu": {
+                        "enabled": True,
+                        "url": "https://www.kabum.com.br/hardware/processadores/processador-amd?page_number=1&page_size=20&facet_filters=eyJoYXNfb3Blbl9ib3giOlsidHJ1ZSJdfQ==&sort=most_searched",
+                        "filters": {
+                            "brand": "AMD",
+                            "series": ["7xxx", "9xxx"],
+                            "max_price": None
+                        }
+                    }
+                },
+                "settings": {
+                    "check_interval_minutes": 10,
+                    "alert_cooldown_hours": 24,
+                    "enable_alerts": True
+                }
+            }
+            save_openbox_config(openbox_config)
+            st.rerun()
+        
+        # Editar configurações por categoria
+        category_tabs = st.tabs(["💾 Memórias", "⚡ Fontes", "🔧 Processadores", "⚙️ Geral"])
+        
+        with category_tabs[0]:  # Memórias
+            st.markdown("### 💾 Configuração de Memórias DDR5")
+            memory_cfg = openbox_config["categories"]["memory"]
+            
+            with st.form("edit_memory_config"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    memory_enabled = st.checkbox("Ativar busca de memórias", value=memory_cfg.get("enabled", True))
+                    memory_url = st.text_input("URL de busca", value=memory_cfg.get("url", ""))
+                    min_capacity = st.number_input("Capacidade mínima (GB)", min_value=8, max_value=128, value=memory_cfg.get("filters", {}).get("min_capacity_gb", 16))
+                
+                with col2:
+                    max_price_val = memory_cfg.get("filters", {}).get("max_price")
+                    max_price = st.number_input("Preço máximo (R$)", min_value=0.0, value=float(max_price_val) if max_price_val is not None else 1300.0)
+                    exclude_notebook = st.checkbox("Excluir memórias para notebook", value=memory_cfg.get("filters", {}).get("exclude_notebook", True))
+                
+                # Palavras-chave de exclusão
+                st.markdown("**Palavras-chave de exclusão (uma por linha):**")
+                exclude_keywords = st.text_area(
+                    "Palavras-chave",
+                    value="\n".join(memory_cfg.get("filters", {}).get("exclude_keywords", [])),
+                    height=100,
+                    help="Uma palavra-chave por linha. Produtos com essas palavras no nome serão excluídos."
+                )
+                
+                if st.form_submit_button("💾 Salvar Configuração de Memórias", type="primary"):
+                    openbox_config["categories"]["memory"]["enabled"] = memory_enabled
+                    openbox_config["categories"]["memory"]["url"] = memory_url
+                    openbox_config["categories"]["memory"]["filters"]["min_capacity_gb"] = min_capacity
+                    openbox_config["categories"]["memory"]["filters"]["max_price"] = max_price
+                    openbox_config["categories"]["memory"]["filters"]["exclude_notebook"] = exclude_notebook
+                    openbox_config["categories"]["memory"]["filters"]["exclude_keywords"] = [
+                        kw.strip() for kw in exclude_keywords.split("\n") if kw.strip()
+                    ]
+                    save_openbox_config(openbox_config)
+                    st.success("✅ Configuração de memórias salva!")
+                    st.rerun()
+        
+        with category_tabs[1]:  # Fontes
+            st.markdown("### ⚡ Configuração de Fontes de Alimentação")
+            psu_cfg = openbox_config["categories"]["psu"]
+            
+            with st.form("edit_psu_config"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    psu_enabled = st.checkbox("Ativar busca de fontes", value=psu_cfg.get("enabled", True))
+                    psu_url = st.text_input("URL de busca", value=psu_cfg.get("url", ""))
+                    min_watts = st.number_input("Potência mínima (W)", min_value=0, value=psu_cfg.get("filters", {}).get("min_watts", 750))
+                
+                with col2:
+                    efficiency_options = ["BRONZE", "SILVER", "GOLD", "PLATINUM", "TITANIUM"]
+                    efficiency_value = psu_cfg.get("filters", {}).get("efficiency", "GOLD")
+                    efficiency_index = efficiency_options.index(efficiency_value) if efficiency_value in efficiency_options else 2  # Default: GOLD
+                    efficiency = st.selectbox(
+                        "Eficiência (80 Plus)",
+                        options=efficiency_options,
+                        index=efficiency_index
+                    )
+                    max_price_psu_val = psu_cfg.get("filters", {}).get("max_price")
+                    max_price_psu = st.number_input(
+                        "Preço máximo (R$) - Deixe 0 para sem limite",
+                        min_value=0.0,
+                        value=float(max_price_psu_val) if max_price_psu_val is not None else 0.0
+                    )
+                
+                if st.form_submit_button("⚡ Salvar Configuração de Fontes", type="primary"):
+                    openbox_config["categories"]["psu"]["enabled"] = psu_enabled
+                    openbox_config["categories"]["psu"]["url"] = psu_url
+                    openbox_config["categories"]["psu"]["filters"]["min_watts"] = min_watts
+                    openbox_config["categories"]["psu"]["filters"]["efficiency"] = efficiency
+                    openbox_config["categories"]["psu"]["filters"]["max_price"] = max_price_psu if max_price_psu > 0 else None
+                    save_openbox_config(openbox_config)
+                    st.success("✅ Configuração de fontes salva!")
+                    st.rerun()
+        
+        with category_tabs[2]:  # Processadores
+            st.markdown("### 🔧 Configuração de Processadores")
+            cpu_cfg = openbox_config["categories"]["cpu"]
+            
+            with st.form("edit_cpu_config"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    cpu_enabled = st.checkbox("Ativar busca de processadores", value=cpu_cfg.get("enabled", True))
+                    cpu_url = st.text_input("URL de busca", value=cpu_cfg.get("url", ""))
+                    brand = st.selectbox("Marca", options=["AMD", "INTEL"], index=0 if cpu_cfg.get("filters", {}).get("brand", "AMD") == "AMD" else 1)
+                
+                with col2:
+                    st.markdown("**Séries aceitas (ex: 7xxx, 9xxx):**")
+                    series_input = st.text_input(
+                        "Séries (separadas por vírgula)",
+                        value=", ".join(cpu_cfg.get("filters", {}).get("series", ["7xxx", "9xxx"])),
+                        help="Ex: 7xxx, 9xxx"
+                    )
+                    max_price_cpu_val = cpu_cfg.get("filters", {}).get("max_price")
+                    max_price_cpu = st.number_input(
+                        "Preço máximo (R$) - Deixe 0 para sem limite",
+                        min_value=0.0,
+                        value=float(max_price_cpu_val) if max_price_cpu_val is not None else 0.0
+                    )
+                
+                if st.form_submit_button("🔧 Salvar Configuração de Processadores", type="primary"):
+                    openbox_config["categories"]["cpu"]["enabled"] = cpu_enabled
+                    openbox_config["categories"]["cpu"]["url"] = cpu_url
+                    openbox_config["categories"]["cpu"]["filters"]["brand"] = brand
+                    openbox_config["categories"]["cpu"]["filters"]["series"] = [
+                        s.strip() for s in series_input.split(",") if s.strip()
+                    ]
+                    openbox_config["categories"]["cpu"]["filters"]["max_price"] = max_price_cpu if max_price_cpu > 0 else None
+                    save_openbox_config(openbox_config)
+                    st.success("✅ Configuração de processadores salva!")
+                    st.rerun()
+        
+        with category_tabs[3]:  # Geral
+            st.markdown("### ⚙️ Configurações Gerais")
+            settings = openbox_config.get("settings", {})
+            
+            with st.form("edit_general_config"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    check_interval = st.number_input(
+                        "Intervalo de verificação (minutos)",
+                        min_value=1,
+                        max_value=1440,
+                        value=settings.get("check_interval_minutes", 10)
+                    )
+                    alert_cooldown = st.number_input(
+                        "Cooldown de alertas (horas)",
+                        min_value=1,
+                        max_value=168,
+                        value=settings.get("alert_cooldown_hours", 24),
+                        help="Tempo mínimo entre alertas do mesmo produto"
+                    )
+                
+                with col2:
+                    enable_alerts = st.checkbox("Ativar alertas por email", value=settings.get("enable_alerts", True))
+                
+                if st.form_submit_button("⚙️ Salvar Configurações Gerais", type="primary"):
+                    openbox_config["settings"]["check_interval_minutes"] = check_interval
+                    openbox_config["settings"]["alert_cooldown_hours"] = alert_cooldown
+                    openbox_config["settings"]["enable_alerts"] = enable_alerts
+                    save_openbox_config(openbox_config)
+                    st.success("✅ Configurações gerais salvas!")
+                    st.rerun()
+        
+        st.markdown("---")
+        st.info("💡 As alterações na configuração serão aplicadas na próxima execução do monitor.")
+
+# ============================================================
+# ABA 6: GOOGLE SHOPPING
+# ============================================================
+with tab6:
+    st.header("🛒 Busca no Google Shopping")
+    st.markdown("Busque memórias DDR5 6000MHz CL30 e encontre os melhores preços!")
+    
+    # Seleção de capacidade
+    capacity = st.selectbox(
+        "Selecione a capacidade da memória:",
+        ["8GB", "16GB", "32GB"],
+        index=2  # Padrão: 32GB
+    )
+    
+    if st.button("🔍 Buscar no Google Shopping", type="primary"):
+        with st.spinner("Buscando no Google Shopping..."):
+            try:
+                from src.google_shopping_search import search_memory_ddr5_6000_cl30
+                
+                results = search_memory_ddr5_6000_cl30(capacity)
+                
+                if results:
+                    st.success(f"✅ Encontrados {len(results)} resultados!")
+                    
+                    # Mostrar o menor preço em destaque
+                    best_result = results[0]
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("💰 Menor Preço", f"R$ {best_result.price:.2f}")
+                    with col2:
+                        st.metric("🏪 Loja", best_result.store)
+                    with col3:
+                        st.metric("📦 Total de Opções", len(results))
+                    
+                    st.divider()
+                    st.subheader("📋 Todos os Resultados (ordenados por preço)")
+                    
+                    # Exibir resultados em cards
+                    for idx, result in enumerate(results[:20], 1):  # Limitar a 20 resultados
+                        with st.container():
+                            col1, col2, col3, col4 = st.columns([3, 1.5, 1.5, 1])
+                            
+                            with col1:
+                                st.markdown(f"**{result.title}**")
+                                st.caption(f"🏪 {result.store}")
+                            
+                            with col2:
+                                st.metric("Preço", f"R$ {result.price:.2f}")
+                            
+                            with col3:
+                                if idx == 1:
+                                    st.success("🥇 Melhor Preço")
+                                else:
+                                    diff = result.price - best_result.price
+                                    st.caption(f"+R$ {diff:.2f} vs melhor")
+                            
+                            with col4:
+                                if result.url:
+                                    st.link_button("🔗 Ver", result.url, use_container_width=True)
+                            
+                            st.divider()
+                else:
+                    st.warning("⚠️ Nenhum resultado encontrado. Tente novamente mais tarde.")
+                    
+            except Exception as e:
+                st.error(f"❌ Erro ao buscar no Google Shopping: {e}")
+                st.exception(e)
+
+# ============================================================
+# ABA 7: SOBRE
+# ============================================================
+
+with tab7:
     st.header("ℹ️ Sobre o Sistema")
 
     st.markdown("""
@@ -1602,6 +2298,7 @@ with tab5:
 
     **Outras Funcionalidades:**
     - ✅ Monitor de voos
+    - ✅ Monitor de Open Box (Kabum)
     - ✅ Alertas por email
     - ✅ Auto-refresh
     - ✅ Mobile-friendly
