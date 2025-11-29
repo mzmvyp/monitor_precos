@@ -12,6 +12,7 @@ from typing import Sequence
 
 from src.price_monitor import PriceMonitor
 from src.flight_monitor import FlightMonitor
+from src.openbox_monitor import OpenBoxMonitor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ def parse_args() -> argparse.Namespace:
 def collector_loop(
     monitor: PriceMonitor,
     flight_monitor: FlightMonitor,
+    openbox_monitor: OpenBoxMonitor,
     stop_event: threading.Event,
     interval_minutes: float,
     product_ids: Sequence[str] | None,
@@ -73,10 +75,14 @@ def collector_loop(
     interval_seconds = max(60, int(interval_minutes * 60))
     LOGGER.info("Coleta contínua iniciada. Intervalo: %s segundos", interval_seconds)
     
-    # Contador para buscar voos menos frequentemente (a cada 6 horas)
-    flight_check_interval = 6  # horas
+    # Contador para buscar voos (a cada 2 horas)
+    flight_check_interval = 2  # horas
     flight_check_counter = 0
     checks_per_flight = int((flight_check_interval * 60) / interval_minutes)
+    
+    # Timer para Open Box (a cada 10 minutos, independente do intervalo principal)
+    openbox_check_interval_seconds = 10 * 60  # 10 minutos em segundos
+    last_openbox_check = time.time()
 
     while not stop_event.is_set():
         start = time.perf_counter()
@@ -85,7 +91,7 @@ def collector_loop(
             snapshots = monitor.collect(product_ids=product_ids)
             LOGGER.info("Coletados %s registros de produtos.", len(snapshots))
             
-            # Coletar voos a cada 6 horas (menos frequente)
+            # Coletar voos a cada 2 horas
             flight_check_counter += 1
             if flight_check_counter >= checks_per_flight:
                 try:
@@ -98,6 +104,23 @@ def collector_loop(
                     # Não resetar contador em caso de erro, tentar novamente no próximo ciclo
             else:
                 LOGGER.debug(f"Próxima busca de voos em {checks_per_flight - flight_check_counter} ciclos")
+            
+            # Coletar Open Box a cada 10 minutos (timer baseado em tempo real)
+            current_time = time.time()
+            time_since_last_openbox = current_time - last_openbox_check
+            if time_since_last_openbox >= openbox_check_interval_seconds:
+                try:
+                    LOGGER.info("Iniciando busca de Open Box (a cada 10 min)...")
+                    openbox_products = openbox_monitor.collect()
+                    LOGGER.info("Encontrados %s produtos Open Box.", len(openbox_products))
+                    last_openbox_check = current_time
+                except Exception as e:
+                    LOGGER.error(f"Erro ao coletar Open Box: {e}")
+                    # Resetar timer mesmo em erro para não ficar tentando continuamente
+                    last_openbox_check = current_time
+            else:
+                remaining_seconds = int(openbox_check_interval_seconds - time_since_last_openbox)
+                LOGGER.debug(f"Próxima busca Open Box em {remaining_seconds}s")
                 
         except Exception:  # noqa: BLE001
             LOGGER.exception("Erro inesperado durante coleta")
@@ -154,11 +177,16 @@ def main() -> None:
         history_path=Path("data/flight_history.csv")
     )
     
+    # Criar monitor de Open Box
+    openbox_monitor = OpenBoxMonitor(
+        history_path=Path("data/openbox_history.csv")
+    )
+    
     stop_event = threading.Event()
 
     collector_thread = threading.Thread(
         target=collector_loop,
-        args=(monitor, flight_monitor, stop_event, args.interval, args.products),
+        args=(monitor, flight_monitor, openbox_monitor, stop_event, args.interval, args.products),
         daemon=True,
     )
 
