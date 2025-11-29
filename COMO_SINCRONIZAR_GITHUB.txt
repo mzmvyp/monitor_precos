@@ -1,0 +1,52 @@
+========================================
+  COMO SINCRONIZAR COM GITHUB
+========================================
+
+Este projeto usa a GitHub API diretamente, SEM precisar instalar Git CLI.
+
+PASSO 1: Obter Token do GitHub
+-------------------------------
+1. Acesse: https://github.com/settings/tokens
+2. Clique em "Generate new token (classic)"
+3. Dê um nome (ex: "Monitor Preços Sync")
+4. Marque a opção "repo" (acesso completo aos repositórios)
+5. Clique em "Generate token"
+6. COPIE o token (você só verá ele uma vez!)
+
+PASSO 2: Configurar o Token
+----------------------------
+Escolha UMA das opções:
+
+OPÇÃO A - Arquivo (Recomendado):
+  Crie um arquivo chamado ".github_token" na raiz do projeto
+  Cole o token dentro do arquivo (apenas o token, sem espaços)
+
+OPÇÃO B - Variável de Ambiente:
+  No PowerShell:
+    $env:GITHUB_TOKEN="seu_token_aqui"
+  
+  No CMD:
+    set GITHUB_TOKEN=seu_token_aqui
+
+PASSO 3: Sincronizar
+--------------------
+Execute um dos comandos:
+
+  SYNC_GITHUB.bat
+  
+  OU
+  
+  python sync_github.py
+
+Para testar sem enviar (dry-run):
+  python sync_github.py --dry-run
+
+========================================
+OBSERVAÇÕES IMPORTANTES:
+========================================
+- O token é privado! NÃO compartilhe ou version no Git
+- O arquivo .github_token está no .gitignore (não será enviado)
+- O script sincroniza TODOS os arquivos do projeto
+- Arquivos ignorados pelo .gitignore NÃO serão enviados
+- A primeira sincronização pode demorar alguns minutos
+
