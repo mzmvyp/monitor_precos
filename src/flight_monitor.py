@@ -174,7 +174,14 @@ class FlightMonitor:
         if df.empty:
             return df
         
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        # Converter timestamp e normalizar para UTC (evitar problemas de timezone)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", errors="coerce", utc=True)
+        
+        # Remover linhas com timestamp inválido
+        df = df[df["timestamp"].notna()]
+        
+        if df.empty:
+            return df
         
         # Pegar os mais recentes de cada combinação
         latest = (
@@ -196,7 +203,9 @@ class FlightMonitor:
         if self.history_path.exists():
             history = pd.read_csv(self.history_path, encoding="utf-8")
             if not history.empty:
-                history["timestamp"] = pd.to_datetime(history["timestamp"])
+                # Normalizar para UTC para evitar problemas de timezone
+                history["timestamp"] = pd.to_datetime(history["timestamp"], format="mixed", errors="coerce", utc=True)
+                history = history[history["timestamp"].notna()]
 
         # Carregar configuração para pegar preço de alerta
         config = self.load_config()
@@ -223,37 +232,45 @@ class FlightMonitor:
                     (history["return_date"] == flight.return_date)
                 ].sort_values("timestamp")
 
-            product_name = f"Voo {flight.origin} → {flight.destination} ({flight.departure_date})"
+            product_name = f"Voo {flight.origin} -> {flight.destination} ({flight.departure_date})"
             product_id = f"flight-{flight.flight_id}-{flight.origin}-{flight.destination}-{flight.departure_date}"
 
-            # CASO 1: Voo já foi visto antes - comparar com preço anterior
+            # Só enviar email se houver histórico e redução de pelo menos 5%
             if len(flight_history) >= 2:
                 previous_price = flight_history.iloc[-2]["price"]
-
-                self.alert_manager.check_and_alert(
-                    product_id=product_id,
-                    product_name=product_name,
-                    store=flight.airline,
-                    url=flight.url,
-                    current_price=flight.price,
-                    previous_price=previous_price,
-                    desired_price=alert_price,
-                )
-
-            # CASO 2: Primeira vez vendo este voo - alertar se preço for atrativo
-            elif alert_price and flight.price <= alert_price:
-                LOGGER.info(f"🎯 Voo atrativo encontrado: {product_name} - R$ {flight.price:.2f}")
-
-                # Enviar alerta de "voo atrativo encontrado"
-                self.alert_manager.check_and_alert(
-                    product_id=product_id,
-                    product_name=f"{product_name} [NOVA OFERTA]",
-                    store=flight.airline,
-                    url=flight.url,
-                    current_price=flight.price,
-                    previous_price=alert_price + 1.0,  # Simular "preço anterior" maior para disparar alerta
-                    desired_price=alert_price,
-                )
+                
+                # Calcular redução percentual
+                if previous_price and previous_price > 0:
+                    reduction_percent = ((previous_price - flight.price) / previous_price) * 100
+                    
+                    # Só alertar se redução for de pelo menos 5%
+                    if reduction_percent >= 5.0:
+                        LOGGER.info(
+                            f"📉 Redução de {reduction_percent:.1f}% detectada: {product_name} - "
+                            f"R$ {previous_price:.2f} -> R$ {flight.price:.2f}"
+                        )
+                        
+                        # Para voos, só alertar por redução de preço (não por estar abaixo do desired_price)
+                        # Passar desired_price=None para desabilitar alerta por "abaixo do desejado"
+                        self.alert_manager.check_and_alert(
+                            product_id=product_id,
+                            product_name=product_name,
+                            store=flight.airline,
+                            url=flight.url,
+                            current_price=flight.price,
+                            previous_price=previous_price,
+                            desired_price=None,  # Desabilitar alerta por preço desejado, só por redução
+                        )
+                    else:
+                        LOGGER.debug(
+                            f"Redução de {reduction_percent:.1f}% insuficiente (<5%) para {product_name}"
+                        )
+                else:
+                    # Primeira vez vendo este voo - não enviar email
+                    LOGGER.debug(f"Primeira vez vendo {product_name}, aguardando próxima verificação para comparar preço")
+            else:
+                # Não há histórico suficiente - não enviar email
+                LOGGER.debug(f"Histórico insuficiente para {product_name}, aguardando mais dados")
     
     def close(self):
         """Fecha o agent."""
