@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import random
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -33,16 +34,72 @@ class ScraperContext:
 
 class SeleniumScraper(abc.ABC):
     """Base scraper usando Selenium com Chrome headless."""
-    
+
     store: str
     currency: str = "BRL"
-    
+
+    # Shared driver across all instances (singleton)
+    _shared_driver: Optional[webdriver.Chrome] = None
+    _driver_lock = threading.Lock()
+
     def __init__(self) -> None:
         self.driver = None
-        self._init_driver()
-    
-    def _init_driver(self) -> None:
-        """Inicializa o Chrome driver com opções anti-detecção."""
+        self._use_shared_driver = True  # Flag to control driver sharing
+
+    @classmethod
+    def get_driver(cls) -> webdriver.Chrome:
+        """
+        Get or create shared driver (thread-safe singleton).
+
+        Returns:
+            Shared Chrome WebDriver instance
+        """
+        with cls._driver_lock:
+            if cls._shared_driver is None or not cls._is_driver_alive_static(cls._shared_driver):
+                if cls._shared_driver is not None:
+                    LOGGER.warning("Shared driver is dead, creating new one")
+                else:
+                    LOGGER.info("Creating shared driver")
+                cls._shared_driver = cls._create_driver()
+            return cls._shared_driver
+
+    @classmethod
+    def close_shared_driver(cls) -> None:
+        """
+        Close shared driver (call at end of batch!).
+
+        This should only be called after all scraping operations are complete,
+        not after each individual fetch.
+        """
+        with cls._driver_lock:
+            if cls._shared_driver:
+                try:
+                    cls._shared_driver.quit()
+                    LOGGER.info("Shared driver closed")
+                except Exception as e:
+                    LOGGER.debug(f"Error closing shared driver: {e}")
+                finally:
+                    cls._shared_driver = None
+
+    @staticmethod
+    def _is_driver_alive_static(driver) -> bool:
+        """Check if driver is alive (static version)."""
+        if not driver:
+            return False
+        try:
+            _ = driver.title
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    def _create_driver() -> webdriver.Chrome:
+        """
+        Create new Chrome driver with anti-detection options.
+
+        Returns:
+            Configured Chrome WebDriver instance
+        """
         try:
             # Carregar .env se existir
             from pathlib import Path
@@ -189,14 +246,14 @@ class SeleniumScraper(abc.ABC):
                 import sys
                 old_stderr = sys.stderr
                 sys.stderr = open(os.devnull, 'w')
-                
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                
+
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+
                 # Restaurar stderr
                 sys.stderr.close()
                 sys.stderr = old_stderr
-                
-                LOGGER.info(f"ChromeDriver inicializado com sucesso")
+
+                LOGGER.info("ChromeDriver inicializado com sucesso")
             except OSError as e:
                 if "Win32" in str(e) or "193" in str(e):
                     raise RuntimeError(
@@ -210,7 +267,7 @@ class SeleniumScraper(abc.ABC):
                     raise
             
             # Remover propriedade webdriver para evitar detecção
-            self.driver.execute_cdp_cmd(
+            driver.execute_cdp_cmd(
                 "Page.addScriptToEvaluateOnNewDocument",
                 {
                     "source": """
@@ -220,41 +277,50 @@ class SeleniumScraper(abc.ABC):
                     """
                 },
             )
-            
+
             # Configurar timeouts
-            self.driver.set_page_load_timeout(30)
-            self.driver.implicitly_wait(10)
-            
-            LOGGER.info(f"Selenium driver inicializado para {self.store}")
-            
+            driver.set_page_load_timeout(30)
+            driver.implicitly_wait(10)
+
+            LOGGER.info("Selenium driver configured successfully")
+            return driver
+
         except Exception as e:
             LOGGER.error(f"Erro ao inicializar Selenium driver: {e}")
             raise
     
     def __del__(self):
-        """Fecha o driver ao destruir o objeto."""
-        self.close()
-    
+        """
+        Destructor - does NOT close shared driver.
+
+        The shared driver should only be closed via close_shared_driver()
+        at the end of a batch operation.
+        """
+        pass
+
     def close(self):
-        """Fecha o driver do Selenium."""
-        if self.driver:
-            try:
-                self.driver.quit()
-                LOGGER.debug(f"Driver fechado para {self.store}")
-            except Exception as e:
-                LOGGER.debug(f"Erro ao fechar driver: {e}")
-            finally:
-                self.driver = None
+        """
+        Close method - does NOT close shared driver by default.
+
+        Use close_shared_driver() class method to close the shared driver.
+        """
+        # No-op: driver is shared and should not be closed per instance
+        pass
     
     @retry(wait=wait_exponential(multiplier=2, min=2, max=30), stop=stop_after_attempt(3))
     def fetch(self, url: str) -> PriceSnapshot:
-        """Coleta dados de um produto usando Selenium."""
+        """
+        Coleta dados de um produto usando Selenium.
+
+        IMPORTANTE: O driver compartilhado NÃO é fechado após cada fetch.
+        Use close_shared_driver() ao final do batch de scraping.
+        """
         ctx = ScraperContext(store=self.store, url=url)
-        
+
         try:
             html = self._get_html(ctx)
             price, raw_price, metadata = self._parse(ctx, html)
-            
+
             return PriceSnapshot(
                 product_id="",
                 product_name="",
@@ -285,13 +351,8 @@ class SeleniumScraper(abc.ABC):
                 error=str(exc),
                 metadata={},
             )
-        finally:
-            # Evita deixar instâncias do Chrome/ChromeDriver abertas consumindo memória/CPU
-            # Fecha sempre após cada fetch (mesmo em sucesso ou erro)
-            try:
-                self.close()
-            except Exception:
-                pass
+        # NO FINALLY - do NOT close driver here!
+        # Driver is shared and should be closed via close_shared_driver()
     
     def _get_html(self, ctx: ScraperContext) -> str:
         """Navega até a URL e retorna o HTML."""
@@ -306,7 +367,7 @@ class SeleniumScraper(abc.ABC):
                 "mercadolivre": ["mercadolivre.com.br", "mercadolivre.com"],
                 "inpower": ["inpower.com.br"],
             }
-            
+
             expected_domains = store_domains.get(self.store, [])
             if expected_domains and not any(domain in url_lower for domain in expected_domains):
                 LOGGER.warning(
@@ -314,30 +375,25 @@ class SeleniumScraper(abc.ABC):
                     f"loja={self.store}, URL={ctx.url}. "
                     f"Verifique a configuração do produto."
                 )
-            
-            # Inicializar driver se não existir ou não estiver válido
-            if not self.driver or not self._is_driver_alive():
-                if not self.driver:
-                    LOGGER.debug(f"Inicializando driver para {self.store}")
-                else:
-                    LOGGER.warning("Driver inválido detectado, reiniciando...")
-                self._init_driver()
-            
+
+            # Get shared driver (will create if needed)
+            driver = self.get_driver()
+
             # Delay aleatório para simular comportamento humano
             time.sleep(random.uniform(1.0, 3.0))
-            
+
             LOGGER.debug(f"Navegando para {ctx.url}")
-            self.driver.get(ctx.url)
-            
+            driver.get(ctx.url)
+
             # Aguardar página carregar
             time.sleep(random.uniform(2.0, 4.0))
-            
+
             # Scroll para simular leitura
-            self._simulate_human_behavior()
-            
+            self._simulate_human_behavior(driver)
+
             # Obter HTML
-            html = self.driver.page_source
-            
+            html = driver.page_source
+
             return html
             
         except TimeoutException:
@@ -347,45 +403,35 @@ class SeleniumScraper(abc.ABC):
             LOGGER.error(f"Erro do WebDriver: {e}")
             raise
     
-    def _is_driver_alive(self) -> bool:
-        """Verifica se o driver ainda está válido."""
-        if not self.driver:
-            return False
-        try:
-            # Tentar obter o título da página atual
-            _ = self.driver.title
-            return True
-        except Exception:
-            return False
-    
-    def _simulate_human_behavior(self):
+    def _simulate_human_behavior(self, driver):
         """Simula comportamento humano com scroll e movimentos."""
         try:
             # Scroll suave para baixo
-            total_height = self.driver.execute_script("return document.body.scrollHeight")
-            viewport_height = self.driver.execute_script("return window.innerHeight")
-            
+            total_height = driver.execute_script("return document.body.scrollHeight")
+            viewport_height = driver.execute_script("return window.innerHeight")
+
             current_position = 0
             while current_position < total_height:
                 # Scroll em incrementos aleatórios
                 scroll_amount = random.randint(100, 300)
                 current_position += scroll_amount
-                
-                self.driver.execute_script(f"window.scrollTo(0, {current_position});")
+
+                driver.execute_script(f"window.scrollTo(0, {current_position});")
                 time.sleep(random.uniform(0.1, 0.3))
-                
+
                 # Parar no meio da página (simular leitura)
                 if current_position > viewport_height and current_position < total_height / 2:
                     time.sleep(random.uniform(0.5, 1.0))
                     break
-            
+
         except Exception as e:
             LOGGER.debug(f"Erro ao simular comportamento: {e}")
-    
+
     def wait_for_element(self, by: By, value: str, timeout: int = 10):
         """Aguarda um elemento aparecer na página."""
+        driver = self.get_driver()
         try:
-            element = WebDriverWait(self.driver, timeout).until(
+            element = WebDriverWait(driver, timeout).until(
                 EC.presence_of_element_located((by, value))
             )
             return element

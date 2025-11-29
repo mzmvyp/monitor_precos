@@ -1,0 +1,153 @@
+# ============================================================================
+# Credenciais e Secrets - NUNCA COMMITAR!
+# ============================================================================
+config/.secrets.yaml
+.secrets.yaml
+*.secrets.yaml
+.env
+.env.local
+.env.*.local
+
+# Senhas e tokens
+*password*
+*token*
+*secret*
+*credentials*
+
+# ============================================================================
+# Python
+# ============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# ============================================================================
+# IDEs
+# ============================================================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# OS
+# ============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================================================
+# Logs e Dados
+# ============================================================================
+logs/
+*.log
+data/*.json
+data/*.db
+data/*.sqlite
+data/*.csv
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# ============================================================================
+# ChromeDriver
+# ============================================================================
+chromedriver
+chromedriver.exe
+.chromedriver/
+
+# ============================================================================
+# Jupyter Notebooks
+# ============================================================================
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================================================
+# Outros
+# ============================================================================
+# Arquivos de cache
+*.cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Sistema de monitoramento
+price_history.json
+alerts_sent.json

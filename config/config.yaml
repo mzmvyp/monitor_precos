@@ -1,0 +1,268 @@
+# Configuração Unificada do Monitor de Preços
+# Este arquivo centraliza TODAS as configurações do sistema
+# Credenciais ficam em .secrets.yaml (não commitado!)
+
+# ============================================================================
+# CONFIGURAÇÕES GERAIS
+# ============================================================================
+general:
+  check_interval_minutes: 60
+  timezone: "America/Sao_Paulo"
+
+# ============================================================================
+# CONFIGURAÇÕES DE SCRAPING
+# ============================================================================
+scraping:
+  selenium:
+    headless: true
+    timeout: 30
+    max_retries: 5
+    close_driver_after_batch: true  # NÃO após cada fetch!
+    rate_limit_per_store: 5  # Max requisições simultâneas por loja
+    delay_seconds: 2  # Delay entre requisições
+
+  # Configurações específicas por loja
+  store_settings:
+    terabyte:
+      use_headless: false  # Cloudflare detecta headless
+      extra_delay: 10
+      max_retries: 3
+
+    default:
+      use_headless: true
+      timeout: 30
+      max_retries: 2
+
+  # Detecção de Cloudflare
+  cloudflare_detection:
+    keywords:
+      - "Just a moment"
+      - "Checking your browser"
+      - "Verificando seu navegador"
+      - "Um momento"
+      - "aguarde"
+      - "cf-browser-verification"
+      - "challenge-platform"
+    max_wait_seconds: 60
+
+  # Validação de preços
+  price_validation:
+    min_price: 50.0
+    max_price: 50000.0
+    max_increase_percent: 150  # Rejeitar aumentos > 150%
+    max_decrease_percent: 90   # Rejeitar quedas > 90%
+
+    # Limites por categoria
+    category_limits:
+      memory:
+        min: 150
+        max: 5000
+      motherboard:
+        min: 400
+        max: 8000
+      cpu:
+        min: 300
+        max: 10000
+      gpu:
+        min: 800
+        max: 30000
+      psu:
+        min: 200
+        max: 3000
+      cruise:
+        min: 1000
+        max: 100000
+
+# ============================================================================
+# CONFIGURAÇÕES DE CACHE
+# ============================================================================
+performance:
+  use_cache: true
+  cache_ttl_minutes: 30
+  parallel_scrapers: false  # Sequencial é mais seguro
+
+# ============================================================================
+# CONFIGURAÇÕES DE ALERTAS
+# ============================================================================
+alerts:
+  enabled: true
+  cooldown_hours: 6  # Não enviar mais de 1 alerta a cada 6h do mesmo produto
+  recipient: "willian.prado@ymail.com"  # Email que recebe alertas
+
+  triggers:
+    price_drop_percent: 5.0  # Alertar em quedas >= 5%
+    priority_price_drop_percent: 2.0  # Para produtos prioritários
+    below_desired_price: true  # Alertar quando ficar abaixo do preço desejado
+
+  # Produtos prioritários (alerta mais sensível)
+  priority_products:
+    - "memory-xpg-lancer-rgb-32gb"
+    - "motherboard-asus-tuf-b650m-e-wifi"
+
+  # Templates de mensagens
+  messages:
+    subject_template: "🔥 ALERTA DE PREÇO: {product_name}"
+    body_template: |
+      🎯 PROMOÇÃO DETECTADA!
+
+      Produto: {product_name}
+      Loja: {store}
+
+      💰 PREÇO ATUAL: R$ {current_price}
+      📉 PREÇO ANTERIOR: R$ {previous_price}
+      🔻 REDUÇÃO: {reduction_percent}%
+
+      🎯 Preço Desejado: R$ {desired_price}
+
+      🔗 COMPRAR AGORA:
+      {url}
+
+      ⏰ Alerta enviado em: {timestamp}
+
+      ---
+      Monitor de Preços Automático
+      Não perca mais promoções! 🚀
+
+# ============================================================================
+# PRODUTOS MONITORADOS
+# ============================================================================
+products:
+  - id: cruise-royal-caribbean-greece-2026
+    name: "Cruzeiro Royal Caribbean - Grécia 7 Noites (05-12 Set/2026)"
+    category: cruise
+    desired_price: 10000.0
+    enabled: true
+    urls:
+      - store: royalcaribbean
+        url: https://www.royalcaribbean.com/bra/pt/checkout/summary?groupId=EX07BLQ-2504783051&packageCode=EX07M799&sailDate=2026-09-05&country=BRA&selectedCurrencyCode=BRL&shipCode=EX&cabinClassType=INTERIOR&roomIndex=0&r0a=2&r0c=0&r0b=n&r0l=395356337&r0r=n&r0s=n&r0q=n&r0t=n&r0d=INTERIOR&r0D=n&rgVisited=true&r0C=y&r0e=ZI&r0f=ZI&r0g=BESTRATE&r0h=r&r0p=3&r0z=n&r0m=y
+
+  - id: motherboard-asus-tuf-b650m-e-wifi
+    name: "Placa-Mãe ASUS TUF Gaming B650M-E WiFi AMD AM5 B650 DDR5"
+    category: motherboard
+    desired_price: 1200.0
+    enabled: true
+    urls:
+      - store: kabum
+        url: https://www.kabum.com.br/produto/523145/placa-mae-asus-tuf-gaming-b650m-e-wifi-amd-am5-b650-ddr5-preto-90mb1fv0-m0eay0
+      - store: pichau
+        url: https://www.pichau.com.br/placa-mae-asus-tuf-gaming-b650m-e-ddr5-socket-amd-am5-m-atx-chipset-amd-b650-tuf-gaming-b650m-e
+      - store: inpower
+        url: https://www.inpower.com.br/placa-mae-asus-tuf-gaming-para-amd-am5-b650m-e-wifi-4xddr5-matx-90mb1fv0-m0eay0-p1026920
+
+  - id: motherboard-gigabyte-b650m-aorus-elite-ax
+    name: "Placa-Mãe Gigabyte B650M Aorus Elite AX AMD AM5 Micro-ATX DDR5 Wi-Fi Bluetooth"
+    category: motherboard
+    desired_price: 1200.0
+    enabled: true
+    urls:
+      - store: kabum
+        url: https://www.kabum.com.br/produto/390275/placa-mae-gigabyte-b650m-aorus-elite-ax-amd-micro-atx-ddr5-wi-fi-bluetooth-b650m-aorus-elite-ax
+
+  - id: motherboard-asus-tuf-b650em-plus
+    name: "Placa-Mãe ASUS TUF B650EM Plus AMD AM5 M-ATX DDR5 WiFi 6E Bluetooth"
+    category: motherboard
+    desired_price: 1200.0
+    enabled: true
+    urls:
+      - store: kabum
+        url: https://www.kabum.com.br/produto/871302/placa-mae-asus-tuf-b650em-plus-amd-am5-m-atx-ddr5-wifi-6e-bluetooth-preto-90mb1lu0
+      - store: inpower
+        url: https://www.inpower.com.br/placa-mae-asus-tuf-gaming-b850m-plus-chipset-b850-amd-am5-matx-ddr5-90mb1ix0-m0eay0-p1168141
+      - store: amazon
+        url: https://www.amazon.com.br/ASUS-Gaming-B850M-PLUS-Compat%C3%ADvel-Mem%C3%B3ria/dp/B0G1HPV39B/ref=sr_1_5
+      - store: kabum
+        url: https://www.kabum.com.br/produto/725578/placa-mae-asus-tuf-b850m-plus-wifi-amd-am5-m-atx-ddr5-wi-fi-6e-preto-tuf-gaming-b850m-plus-wifi
+
+  - id: memory-xpg-lancer-rgb-32gb
+    name: "Memória XPG Lancer RGB 32GB (2x16GB) DDR5 6000MHz CL30 Preta"
+    category: memory
+    desired_price: 900.0
+    enabled: true
+    urls:
+      - store: kabum
+        url: https://www.kabum.com.br/produto/380742/memoria-xpg-lancer-rgb-32gb-2x16gb-6000mhz-ddr5-cl30-preta-ax5u6000c3016g-dclarbk
+      - store: pichau
+        url: https://www.pichau.com.br/memoria-xpg-lancer-rgb-32gb-2x16gb-ddr5-6000mhz-preta-ax5u6000c3016g-dclarbk
+
+# ============================================================================
+# MONITORAMENTO DE VOOS
+# ============================================================================
+flights:
+  - id: "flight-italy-sep2026"
+    name: "Voo Brasil → Itália (Set/2026)"
+    enabled: true
+    origin: "GRU"  # São Paulo Guarulhos
+    destinations:
+      - "MXP"  # Milão Malpensa
+      - "BLQ"  # Bologna
+      - "FLR"  # Florença
+      - "VCE"  # Veneza
+
+    departure_dates:
+      - "2026-08-30"
+      - "2026-08-31"
+      - "2026-09-01"
+      - "2026-09-02"
+      - "2026-09-03"
+
+    return_offset_days: 14
+    max_price: 8000.0
+    alert_price: 5000.0
+    max_stops: 2
+
+    preferred_airlines:
+      - "LATAM"
+      - "Azul"
+      - "TAP"
+      - "Lufthansa"
+      - "Air France"
+
+    search_interval_hours: 24
+
+# ============================================================================
+# MONITORAMENTO DE OPEN BOX
+# ============================================================================
+open_box:
+  enabled: true
+  check_interval_minutes: 10
+  alert_cooldown_hours: 3
+
+  categories:
+    memory:
+      enabled: true
+      url: https://www.kabum.com.br/hardware/memoria-ram/ddr-5?page_number=1&page_size=20&facet_filters=eyJoYXNfb3Blbl9ib3giOlsidHJ1ZSJdfQ==&sort=most_searched
+      filters:
+        min_capacity_gb: 16
+        max_price: 1300.0
+        exclude_keywords:
+          - NOTEBOOK
+          - LAPTOP
+          - SO-DIMM
+          - SODIMM
+          - MOBILE
+          - "260-PIN"
+          - "260 PIN"
+
+    psu:
+      enabled: true
+      url: https://www.kabum.com.br/hardware/fontes?page_number=1&page_size=20&facet_filters=eyJoYXNfb3Blbl9ib3giOlsidHJ1ZSJdfQ==&sort=most_searched
+      filters:
+        min_watts: 750
+        efficiency: GOLD
+
+    cpu:
+      enabled: true
+      url: https://www.kabum.com.br/hardware/processadores/processador-amd?page_number=1&page_size=20&facet_filters=eyJoYXNfb3Blbl9ib3giOlsidHJ1ZSJdfQ==&sort=most_searched
+      filters:
+        brand: AMD
+        series:
+          - "7xxx"
+          - "9xxx"
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/monitor.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

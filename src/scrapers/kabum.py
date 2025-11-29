@@ -6,31 +6,7 @@ import re
 from bs4 import BeautifulSoup
 
 from .selenium_base import SeleniumScraper, ScraperContext, LOGGER
-
-
-def parse_brazilian_currency(value: str) -> float | None:
-    """Parse preço brasileiro para float."""
-    if not value:
-        return None
-
-    # Padrão: R$ 1.234,56 ou R$1234,56 ou R$ 1234 (aceita com ou sem centavos)
-    match = re.search(r'R\$\s*([0-9\.\s]+(?:,[0-9]{1,2})?)', value)
-    if not match:
-        return None
-
-    number = match.group(1)
-    digits = number.replace(" ", "").replace(".", "")
-
-    # Se tem vírgula, é separador decimal
-    if "," in digits:
-        digits = digits.replace(",", ".")
-    # Se não tem vírgula, já é o valor inteiro
-
-    try:
-        return float(digits)
-    except ValueError:
-        LOGGER.debug("Falha ao converter preço: %s", number)
-        return None
+from ..utils.currency import parse_brazilian_currency
 
 
 class KabumScraper(SeleniumScraper):
