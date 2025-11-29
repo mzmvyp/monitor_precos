@@ -96,11 +96,18 @@ class SeleniumScraper(abc.ABC):
             chrome_options.add_argument("--disable-dev-tools")
             chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
             
-            # Suprimir avisos específicos de GPU/WebGL
+            # Suprimir avisos específicos de GPU/WebGL e virtualização
             chrome_options.add_argument("--disable-software-rasterizer")
             chrome_options.add_argument("--disable-webgl")
             chrome_options.add_argument("--disable-webgl2")
             chrome_options.add_argument("--disable-accelerated-2d-canvas")
+            chrome_options.add_argument("--disable-gpu-sandbox")
+            chrome_options.add_argument("--use-gl=swiftshader")
+            chrome_options.add_argument("--disable-features=UseChromeOSDirectVideoDecoder")
+            
+            # Suprimir erros de GPU/virtualização (redirecionar stderr)
+            chrome_options.add_argument("--disable-gpu-process-crash-limit")
+            chrome_options.add_experimental_option('excludeSwitches', ['enable-logging', 'enable-gpu-logging'])
             
             # Desabilitar imagens para acelerar (opcional)
             prefs = {
@@ -278,13 +285,42 @@ class SeleniumScraper(abc.ABC):
                 error=str(exc),
                 metadata={},
             )
+        finally:
+            # Evita deixar instâncias do Chrome/ChromeDriver abertas consumindo memória/CPU
+            # Fecha sempre após cada fetch (mesmo em sucesso ou erro)
+            try:
+                self.close()
+            except Exception:
+                pass
     
     def _get_html(self, ctx: ScraperContext) -> str:
         """Navega até a URL e retorna o HTML."""
         try:
-            # Verificar se o driver ainda está válido
-            if not self._is_driver_alive():
-                LOGGER.warning("Driver inválido detectado, reiniciando...")
+            # Validar se a URL corresponde à loja esperada
+            url_lower = ctx.url.lower()
+            store_domains = {
+                "kabum": ["kabum.com.br"],
+                "pichau": ["pichau.com.br"],
+                "amazon": ["amazon.com.br", "amazon.com"],
+                "terabyte": ["terabyteshop.com.br"],
+                "mercadolivre": ["mercadolivre.com.br", "mercadolivre.com"],
+                "inpower": ["inpower.com.br"],
+            }
+            
+            expected_domains = store_domains.get(self.store, [])
+            if expected_domains and not any(domain in url_lower for domain in expected_domains):
+                LOGGER.warning(
+                    f"⚠️ URL não corresponde à loja esperada: "
+                    f"loja={self.store}, URL={ctx.url}. "
+                    f"Verifique a configuração do produto."
+                )
+            
+            # Inicializar driver se não existir ou não estiver válido
+            if not self.driver or not self._is_driver_alive():
+                if not self.driver:
+                    LOGGER.debug(f"Inicializando driver para {self.store}")
+                else:
+                    LOGGER.warning("Driver inválido detectado, reiniciando...")
                 self._init_driver()
             
             # Delay aleatório para simular comportamento humano
@@ -313,6 +349,8 @@ class SeleniumScraper(abc.ABC):
     
     def _is_driver_alive(self) -> bool:
         """Verifica se o driver ainda está válido."""
+        if not self.driver:
+            return False
         try:
             # Tentar obter o título da página atual
             _ = self.driver.title
