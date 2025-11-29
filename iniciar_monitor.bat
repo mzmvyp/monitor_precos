@@ -8,7 +8,9 @@ echo  Monitor de Precos - Premium Edition
 echo ========================================
 echo.
 echo Iniciando sistema...
-echo - Coleta automatica a cada 1 hora
+echo - Coleta automatica de produtos a cada 1 hora
+echo - Monitor Open Box Kabum a cada 10 minutos
+echo - Busca de voos a cada 2 horas
 echo - Dashboard Premium em http://localhost:8501
 echo - Estatisticas avancadas
 echo - Import/Export CSV/JSON
