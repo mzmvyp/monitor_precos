@@ -497,11 +497,17 @@ class TerabyteScraper(SeleniumScraper):
             "indisponível" not in page_text 
             and "fora de estoque" not in page_text
             and "esgotado" not in page_text
+            and "produto esgotado" not in page_text
         )
         
         # Verificar botão de compra
         buy_button = soup.select_one("button[class*='buy'], button[class*='comprar'], .btn-comprar")
         if buy_button and "disabled" in buy_button.get("class", []):
             in_stock = False
+        
+        # Se não está disponível, não retornar preço
+        if not in_stock:
+            LOGGER.info(f"Terabyte: Produto sem estoque - {ctx.url}")
+            return None, None, {"in_stock": False}
 
-        return price_value, raw_price, {"in_stock": in_stock}
+        return price_value, raw_price, {"in_stock": True}
